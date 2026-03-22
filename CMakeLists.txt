@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(CMake_test)
+project(XOR_Engine)
 
 add_subdirectory(src/engine)
 add_subdirectory(src/game)
