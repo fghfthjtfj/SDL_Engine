@@ -1,0 +1,138 @@
+﻿#include "PCH.h"
+#include "Engine.h"
+#include "Game.h"
+#include "config.h"
+extern "C" __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+static SDL_Window* win = NULL;
+static SDL_GPUDevice* dev = NULL;
+static constexpr float WIDTH = 800.0f;
+static constexpr float HEIGHT = 600.0f;
+
+int main() {
+    win = SDL_CreateWindow("GPU-triangle (basic)",
+        static_cast<int>(WIDTH),
+        static_cast<int>(HEIGHT),
+        SDL_WINDOW_RESIZABLE);
+    dev = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV |
+        SDL_GPU_SHADERFORMAT_DXIL |
+        SDL_GPU_SHADERFORMAT_MSL,
+        false, nullptr);
+    SDL_ClaimWindowForGPUDevice(dev, win);
+    SDL_SetGPUAllowedFramesInFlight(dev, BUFFERING_LEVEL); // тройная буферизация
+
+    // === Настройка swapchain ===
+    SDL_GPUPresentMode desired_mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
+    SDL_GPUSwapchainComposition desired_comp = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
+
+    // Проверяем, поддерживается ли нужный режим
+    if (!SDL_WindowSupportsGPUPresentMode(dev, win, desired_mode)) {
+        SDL_Log("IMMEDIATE mode not supported — falling back to VSYNC");
+        desired_mode = SDL_GPU_PRESENTMODE_VSYNC;
+    }
+    if (!SDL_WindowSupportsGPUSwapchainComposition(dev, win, desired_comp)) {
+        SDL_Log("SDR composition not supported — fallback to default");
+        desired_comp = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
+    }
+
+    // Применяем параметры
+    if (!SDL_SetGPUSwapchainParameters(dev, win, desired_comp, desired_mode)) {
+        SDL_Log("Failed to set swapchain parameters: %s", SDL_GetError());
+    }
+    else {
+        SDL_Log("Swapchain set: comp=%d, mode=%d", desired_comp, desired_mode);
+    }
+
+    // === Создаём движок и игру ===
+    Engine* engine = new Engine(win, dev, WIDTH, HEIGHT);
+    Game* game = new Game(engine);
+
+    game->MainInit();
+
+	ThreadController* threadController = nullptr;
+    threadController = engine->GetThreadController();
+    if (!threadController) {
+        SDL_Log("Failed to get ThreadController");
+        return -1;
+	}
+
+    threadController->SetGameIterationCallback([game] {
+        game->MainIterate();
+    });
+
+    threadController->StartThreads();
+    bool running = true;
+    while (running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            ImGui_ImplSDL3_ProcessEvent(&event);
+            SDL_AppResult res = game->SDL_AppEvent(&event);
+            switch (res) {
+            case SDL_APP_SUCCESS:
+				running = false;
+				break;
+            };
+        }
+        SDL_Delay(16);
+    }
+    return 0;
+
+}
+//SDL_AppResult MainInit(void** state, int argc, char** argv)
+//{
+//    win = SDL_CreateWindow("GPU-triangle (basic)",
+//        static_cast<int>(WIDTH),
+//        static_cast<int>(HEIGHT),
+//        SDL_WINDOW_RESIZABLE);
+//    dev = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV |
+//        SDL_GPU_SHADERFORMAT_DXIL |
+//        SDL_GPU_SHADERFORMAT_MSL,
+//        false, nullptr);
+//    SDL_ClaimWindowForGPUDevice(dev, win);
+//    SDL_SetGPUAllowedFramesInFlight(dev, BUFFERING_LEVEL); // тройная буферизация
+//
+//    // === Настройка swapchain ===
+//    SDL_GPUPresentMode desired_mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
+//    SDL_GPUSwapchainComposition desired_comp = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
+//
+//    // Проверяем, поддерживается ли нужный режим
+//    if (!SDL_WindowSupportsGPUPresentMode(dev, win, desired_mode)) {
+//        SDL_Log("IMMEDIATE mode not supported — falling back to VSYNC");
+//        desired_mode = SDL_GPU_PRESENTMODE_VSYNC;
+//    }
+//    if (!SDL_WindowSupportsGPUSwapchainComposition(dev, win, desired_comp)) {
+//        SDL_Log("SDR composition not supported — fallback to default");
+//        desired_comp = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
+//    }
+//
+//    // Применяем параметры
+//    if (!SDL_SetGPUSwapchainParameters(dev, win, desired_comp, desired_mode)) {
+//        SDL_Log("Failed to set swapchain parameters: %s", SDL_GetError());
+//    }
+//    else {
+//        SDL_Log("Swapchain set: comp=%d, mode=%d", desired_comp, desired_mode);
+//    }
+//
+//    // === Создаём движок и игру ===
+//    engine = new Engine(win, dev, WIDTH, HEIGHT);
+//    game = new Game(engine);
+//
+//    return game->MainInit();
+//}
+//
+//SDL_AppResult MainIterate(void* state)
+//{
+//    SDL_Delay(10);
+//    return SDL_APP_CONTINUE;
+//}
+//
+//
+//SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
+//    return game->SDL_AppEvent(event);
+//}
+//
+//void SDL_AppQuit(void* state, SDL_AppResult)
+//{
+//    SDL_DestroyGPUDevice(dev);
+//    SDL_DestroyWindow(win);
+//}

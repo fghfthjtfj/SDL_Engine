@@ -1,0 +1,215 @@
+#pragma once
+#include "SDL3/SDL.h"
+
+enum class TexturePreset {
+    Depth_FlatArray2048_1Layers,
+    Depth_FlatArray2048_4Layers,
+    Depth_FlatArray2048_8Layers,
+    Depth_FlatArray2048_16Layers,
+    Depth_FlatArray1024_8Layers,
+    Depth_CubemapArray2048_1Cubes,
+    Depth_CubemapArray2048_4Cubes,
+    Depth_CubemapArray2048_8Cubes,
+    Depth_CubemapArray1024_1Cubes,
+    SingleDepth2048,
+    TempDepth2048,
+    TempDepth1024,
+    Albedo_Atlas4096_3Layer,
+	Albedo_Atlas2048_1Layer,
+    NAOPBR_Atlas2048_1Layer,
+    Custom
+};
+
+namespace TexturePresets {
+    inline SDL_GPUTextureCreateInfo GetCreateInfo(TexturePreset preset) {
+        SDL_GPUTextureCreateInfo info = {};
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        info.props = 0;
+
+        switch (preset) {
+        case TexturePreset::Depth_FlatArray2048_1Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::Depth_FlatArray2048_4Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 6;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::Depth_FlatArray2048_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::Depth_FlatArray2048_16Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 16;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::Depth_FlatArray1024_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::Depth_CubemapArray2048_1Cubes:
+            info.type = SDL_GPU_TEXTURETYPE_CUBE_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1 * 6; // 1 кубмапов * 6 граней
+            info.num_levels = 1;
+
+            break;
+
+        case TexturePreset::Depth_CubemapArray2048_4Cubes:
+            info.type = SDL_GPU_TEXTURETYPE_CUBE_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 4 * 6; // 4 кубмапов * 6 граней
+            info.num_levels = 1;
+
+            break;
+
+        case TexturePreset::Depth_CubemapArray2048_8Cubes:
+            info.type = SDL_GPU_TEXTURETYPE_CUBE_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 8 * 6; // 8 кубмапов * 6 граней
+            info.num_levels = 1;
+
+            break;
+        case TexturePreset::Depth_CubemapArray1024_1Cubes:
+            info.type = SDL_GPU_TEXTURETYPE_CUBE_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 1 * 6; // 1 кубмапов * 6 граней
+            info.num_levels = 1;
+
+            break;
+        case TexturePreset::SingleDepth2048:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::TempDepth2048:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+        case TexturePreset::TempDepth1024:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+        case TexturePreset::Albedo_Atlas4096_3Layer:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 4096;
+            info.height = 4096;
+            info.layer_count_or_depth = 3;
+            info.num_levels = 3;
+            break;
+        case TexturePreset::Albedo_Atlas2048_1Layer:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+			info.width = 2048;
+			info.height = 2048;
+			info.layer_count_or_depth = 1;
+            info.num_levels = 2;
+			break;
+        case TexturePreset::NAOPBR_Atlas2048_1Layer:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+
+        case TexturePreset::Custom:
+            // Для Custom нужно заполнить вручную
+            break;
+        }
+
+        return info;
+    }
+
+    // Версия с параметрами для гибкости
+    inline SDL_GPUTextureCreateInfo ShadowCubemapArray(uint32_t num_cubemaps, uint32_t resolution = 2048) {
+        SDL_GPUTextureCreateInfo info = {};
+        info.type = SDL_GPU_TEXTURETYPE_CUBE_ARRAY;
+        info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+        info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = resolution;
+        info.height = resolution;
+        info.layer_count_or_depth = num_cubemaps * 6;
+        info.num_levels = 1;
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        info.props = 0;
+        return info;
+    }
+
+    inline SDL_GPUTextureCreateInfo ShadowDirectionalArray(uint32_t num_lights, uint32_t resolution = 2048) {
+        SDL_GPUTextureCreateInfo info = {};
+        info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+        info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+        info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = resolution;
+        info.height = resolution;
+        info.layer_count_or_depth = num_lights;
+        info.num_levels = 1;
+        info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        info.props = 0;
+        return info;
+    }
+}

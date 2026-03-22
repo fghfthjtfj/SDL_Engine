@@ -1,0 +1,309 @@
+﻿#include "PCH.h"
+#include "TextureManager.h"
+#include "TexturesPresets.h"
+#include "TextureSamplerPresets.h"
+#include "finders_interface.h"
+
+TextureManager::TextureManager(SDL_GPUDevice* device): ResourceManager(device){
+    CreateSampler(DEFAULT_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::DEFAULT_SAMPLER));
+    CreateSampler(DEFAULT_SHADOW_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::SHADOW_SAMPLER));
+}
+
+TextureAtlas* TextureManager::CreateTextureAtlas(const std::string& name, SDL_GPUTextureCreateInfo tci, SDL_GPUSampler* sampler)
+{
+	auto it = atlases_data.find(name);
+    if (it != atlases_data.end()) {
+        SDL_Log("Texture atlas '%s' already exists, returning existing atlas.", name.c_str());
+        return it->second.get();
+	}
+	auto texture_binding = std::make_unique<TextureAtlas>();
+
+	SDL_GPUTexture* tex = CreateGPU_Texture(tci);
+    if (!tex) {
+        SDL_Log("Failed to create GPU texture for atlas '%s': %s", name.c_str(), SDL_GetError());
+        return nullptr;
+	}
+	texture_binding->texture_binding.texture = tex;
+	texture_binding->texture_binding.sampler = sampler;
+	texture_binding->width = tci.width;
+	texture_binding->height = tci.height;
+	texture_binding->layers = tci.layer_count_or_depth;
+	texture_binding->padding = 3;
+	texture_binding->mip_levels = tci.num_levels;
+
+	TextureAtlas* ptr = texture_binding.get();
+	atlases_data[name] = std::move(texture_binding);
+	return ptr;
+}
+
+TextureAtlas* TextureManager::CreateTextureAtlas(const std::string& name, TextureAtlas* existing_atlas, SDL_GPUSampler* sampler)
+{
+    if (!existing_atlas) {
+        SDL_Log("Invalid existing atlas provided for new atlas '%s'", name.c_str());
+        return nullptr;
+    }
+    auto it = atlases_data.find(name);
+    if (it != atlases_data.end()) {
+        SDL_Log("Texture atlas '%s' already exists, returning existing atlas.", name.c_str());
+        return it->second.get();
+    }
+    auto texture_binding = std::make_unique<TextureAtlas>();
+    texture_binding->texture_binding.texture = existing_atlas->texture_binding.texture;
+    texture_binding->texture_binding.sampler = sampler;
+    texture_binding->width = existing_atlas->width;
+    texture_binding->height = existing_atlas->height;
+    texture_binding->layers = existing_atlas->layers;
+    texture_binding->padding = existing_atlas->padding;
+    texture_binding->mip_levels = existing_atlas->mip_levels;
+
+    TextureAtlas* ptr = texture_binding.get();
+    atlases_data[name] = std::move(texture_binding);
+	return ptr;
+}
+
+TextureHandle* TextureManager::CreateTextureFromFile(const std::string& name, const std::string& atlas_name, const char* path)
+{
+	auto atlas_it = atlases_data.find(atlas_name);
+    if (atlas_it == atlases_data.end()) {
+        SDL_Log("Texture atlas '%s' not found for texture '%s'", atlas_name.c_str(), name.c_str());
+        return nullptr;
+	}
+
+
+}
+
+TextureHandle* TextureManager::CreateTextureFromFile(const std::string& name, TextureAtlas* atlas, const char* path)
+{
+	if (!atlas) {
+        SDL_Log("Invalid atlas provided for texture '%s'", name.c_str());
+        return nullptr;
+	}
+
+	auto it = handles_data.find(name);
+    if (it != handles_data.end()) {
+        SDL_Log("Texture '%s' already exists, returning existing texture.", name.c_str());
+        return it->second.get();
+    }
+    SDL_Surface* surface = IMG_Load(path);
+    if (!surface) {
+        SDL_Log("Failed to load image '%s': %s", path, SDL_GetError());
+        return nullptr;
+    }
+
+    auto texture_handle = std::make_unique<TextureHandle>();
+    auto td = std::make_unique<TextureData>();
+
+    texture_handle->atlas = atlas;
+	texture_handle->texture_data = td.get();
+
+    TextureHandle* ptr = texture_handle.get();
+    handles_data[name] = std::move(texture_handle);
+	atlas->textures_data.push_back(std::move(td));
+
+	CreateUploadTask(ptr, surface->w, surface->h, path);
+    SDL_DestroySurface(surface);
+
+	return ptr;
+}
+
+SDL_GPUTexture* TextureManager::CreateGPU_Texture(SDL_GPUTextureCreateInfo tci)
+{
+    SDL_GPUTexture* tex = SDL_CreateGPUTexture(dev, &tci);
+    return tex;
+}
+
+void TextureManager::CreateUploadTask(TextureHandle* handle, int w, int h, const char* path)
+{
+    uint32_t size = w * h * 4;
+
+    UploadTaskTexture task;
+    task.path = path;
+    task.target_handle = handle;
+    task.offset = current_upload_tb_offset;
+    task.width = w;
+    task.height = h;
+	task.size = size;
+
+    current_upload_tb_offset += size;
+
+	upload_tasks.push_back(task);
+
+}
+
+static uint32_t PackUnorm16x2(float x, float y) {
+    uint16_t lx = static_cast<uint16_t>(SDL_clamp(x, 0.0f, 1.0f) * 65535.0f + 0.5f);
+    uint16_t ly = static_cast<uint16_t>(SDL_clamp(y, 0.0f, 1.0f) * 65535.0f + 0.5f);
+    return static_cast<uint32_t>(lx) | (static_cast<uint32_t>(ly) << 16);
+}
+
+void TextureManager::_BuildUploadTasks() {
+    using namespace rectpack2D;
+    using spaces_t = empty_spaces<false>;
+
+    struct AtlasState {
+        uint32_t layer = 0;
+        uint32_t placed_count = 0;
+        std::unique_ptr<spaces_t> spaces;
+    };
+    std::unordered_map<TextureAtlas*, AtlasState> states;
+
+    for (int idx = 0; idx < (int)upload_tasks.size(); idx++) {
+        auto& task = upload_tasks[idx];
+        TextureAtlas* atlas = task.target_handle->atlas;
+        auto& state = states[atlas];
+
+        if (!state.spaces)
+            state.spaces = std::make_unique<spaces_t>(rect_wh((int)atlas->width, (int)atlas->height));
+
+        uint32_t pad = (state.placed_count == 0) ? 0 : atlas->padding;
+        int packed_w = (int)(task.width + pad * 2);
+        int packed_h = (int)(task.height + pad * 2);
+
+        auto result = state.spaces->insert(rect_wh(packed_w, packed_h));
+
+        if (!result) {
+            state.layer++;
+            state.placed_count = 0;
+            if (state.layer >= atlas->layers) {
+                SDL_Log("Atlas out of layers for task '%s'", task.path);
+                continue;
+            }
+            state.spaces = std::make_unique<spaces_t>(rect_wh((int)atlas->width, (int)atlas->height));
+
+            // На новом слое placed_count == 0, поэтому pad тоже 0
+            pad = 0;
+            packed_w = (int)task.width;
+            packed_h = (int)task.height;
+            result = state.spaces->insert(rect_wh(packed_w, packed_h));
+        }
+
+        if (!result) {
+            SDL_Log("Failed to pack task '%s' even on new layer", task.path);
+            continue;
+        }
+
+        task.dst.texture = atlas->texture_binding.texture;
+        task.dst.x = (Uint32)result->x + pad;
+        task.dst.y = (Uint32)result->y + pad;
+        task.dst.z = 0;
+        task.dst.layer = state.layer;
+        task.dst.mip_level = 0;
+        task.dst.w = task.width;
+        task.dst.h = task.height;
+        task.dst.d = 1;
+
+        TextureData* td = task.target_handle->texture_data;
+        float ox = (float)(result->x + pad) / (float)atlas->width;
+        float oy = (float)(result->y + pad) / (float)atlas->height;
+        float sx = (float)task.width / (float)atlas->width;
+        float sy = (float)task.height / (float)atlas->height;
+        td->uv_packed_offset = PackUnorm16x2(ox, oy);
+        td->uv_packed_scale = PackUnorm16x2(sx, sy);
+        td->layer = state.layer;
+        td->_pad = 0;
+
+        state.placed_count++;
+    }
+}
+
+void TextureManager::ExecuteUploadTasks(SDL_GPUCopyPass* cp) {
+    if (upload_tasks.empty())
+        return;
+
+    if (!mapped_upload_tb) {
+        SDL_Log("UploadToTransferBuffer called without mapping the upload transfer buffer");
+        return;
+    }
+    _BuildUploadTasks();
+
+	EnsureUploadTransferBufferCapacity(current_upload_tb_offset);
+    for (auto& task : upload_tasks) {
+        SDL_Surface* surface = IMG_Load(task.path);
+        if (!surface) {
+            SDL_Log("Failed to load image '%s': %s", task.path, SDL_GetError());
+            return;
+        }
+
+        SDL_Surface* converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_BGRA32);
+        if (!converted) {
+            SDL_Log("Conversion failed: %s", SDL_GetError());
+            return;
+        }
+        SDL_DestroySurface(surface);
+
+        SDL_GPUTextureTransferInfo src{};
+        src.transfer_buffer = upload_transfer_buffer;
+        src.offset = task.offset;
+        src.pixels_per_row = task.width;
+        src.rows_per_layer = task.height;
+
+        std::byte* base = static_cast<std::byte*>(mapped_upload_tb);
+        SDL_memcpy(base + task.offset, converted->pixels, task.size);
+
+        SDL_DestroySurface(converted);
+
+        SDL_UploadToGPUTexture(cp, &src, &task.dst, false);
+    };
+}
+
+void TextureManager::GenerateMipmaps(SDL_GPUCommandBuffer* cb)
+{
+    std::unordered_set<SDL_GPUTexture*> seen;
+    for (auto& task : upload_tasks) {
+        SDL_GPUTexture* tex = task.target_handle->atlas->texture_binding.texture;
+        if (seen.insert(tex).second)
+            SDL_GenerateMipmapsForGPUTexture(cb, tex);
+    }
+    upload_tasks.clear();
+}
+
+SDL_GPUSampler* TextureManager::CreateSampler(const std::string& name, SDL_GPUSamplerCreateInfo sci)
+{
+    SDL_GPUSampler* s = SDL_CreateGPUSampler(dev, &sci);
+    samplers_data[name] = s;
+    return s;
+}
+
+SDL_GPUSampler* TextureManager::GetSampler(const std::string& name)
+{
+    auto it = samplers_data.find(name);
+    if (it != samplers_data.end()) {
+		return it->second;
+        }
+    else {
+        SDL_Log("Sampler '%s' not found", name.c_str());
+        return nullptr;
+    }
+}
+
+void TextureManager::DeleteTexture(const std::string& name)
+{
+  //  auto it = textures_data.find(name);
+  //  if (it != textures_data.end()) {
+  //      SDL_ReleaseGPUTexture(dev, it->second->texture.texture);
+		//textures_data.erase(it);
+  //  }
+  //  else {
+  //      SDL_Log("Texture '%s' not found, cannot delete", name.c_str());
+  //  }
+}
+
+void TextureManager::DeleteTexture(SDL_GPUTexture* texture)
+{
+	SDL_ReleaseGPUTexture(dev, texture);
+}
+
+TextureManager::~TextureManager()
+{
+  //  for (auto& pair : textures_data) {
+		//auto& data = pair.second;
+  //      if (data->texture.texture) {
+  //          SDL_ReleaseGPUTexture(dev, data->texture.texture);
+  //      }
+  //      if (data->texture.sampler) {
+  //          SDL_ReleaseGPUSampler(dev, data->texture.sampler);
+		//}
+  //  }
+  //  textures_data.clear();
+}
+
