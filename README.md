@@ -36,25 +36,18 @@ There is no scripting layer. Game logic is written in plain C++ using engine sys
 
 ## Getting Started
 
-```cmake
-# CMakeLists.txt
-add_subdirectory(XOREngine)
-target_link_libraries(your_game PRIVATE XOREngine)
+The repository already includes a test scene in the `game` class — it's the author's sandbox for development. You can use it as a reference or modify it directly to build your own scene.
+
+**Requirements:** CMake 3.x+, a C++20-capable compiler. SDL3 is fetched automatically via CMake.
+
+### Build
+
+```bash
+git clone https://github.com/fghfthjtfj/SDL_Engine.git
+cd SDL_Engine
+cmake -B build
+cmake --build build
 ```
-
-Define your scene in `game.cpp` (or equivalent entry point) using engine components and systems.
-
-**Requirements:** CMake 3.x+, a C++20-capable compiler, SDL3 (fetched automatically via CMake).
-
----
-
-## Platforms
-
-| Platform | Status |
-|----------|--------|
-| Windows  | ✅ |
-| Linux    | ✅ |
-| macOS    | ✅ |
 
 ---
 
