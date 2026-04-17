@@ -230,7 +230,7 @@ inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPUR
 				}
 
 				SDL_DrawGPUIndexedPrimitivesIndirect(rp,
-					bm->_GetGPUBufferForFrame(bm->GetBufferData(DEFAULT_OUT_INDIRECT_BUFFER), render_frame),
+					bm->_GetGPUBufferForFrame(bm->GetBufferData(DEFAULT_INDIRECT_BUFFER), render_frame),
 					safe_u32(additional_offset +
 						texture_batch.indirect_command_index * sizeof(SDL_GPUIndexedIndirectDrawCommand)),
 					safe_u32(texture_batch.model_batches.size())

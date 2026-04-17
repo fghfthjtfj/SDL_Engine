@@ -30,7 +30,7 @@ layout(set = 0, binding = 3, std430) buffer LightCameras {
 };
 void main()
 {
-    mat4 modelMatrix = models[gl_InstanceIndex];
+    mat4 modelMatrix = models[posIndex[gl_InstanceIndex]];
     vec4 worldPos = modelMatrix * vec4(a_pos, 1.0);
    
     mat3 normalMatrix = mat3(modelMatrix);

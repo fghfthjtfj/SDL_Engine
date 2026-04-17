@@ -68,7 +68,7 @@ SDL_AppResult Game::MainInit()
         passManager->GetRenderPassStep(MAIN_PASS) // associated_render_pass
 	);
     ShaderProgram* sp = shaderManager->CreateShaderProgram("sp", spd_main, bufferManager, 
-        vs, { DEFAULT_OUT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
+        vs, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
         fs, { DEFAULT_LIGHT_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
 		{ TextureSlotRole::Albedo, TextureSlotRole::Normal }
     );
@@ -84,7 +84,7 @@ SDL_AppResult Game::MainInit()
         passManager->GetRenderPassStep(SHADOW_PASS) // associated_render_pass
     );
     ShaderProgram* sp_shadow = shaderManager->CreateShaderProgram("sp_shadow", spd_shadow, bufferManager,
-        vs_2, { DEFAULT_OUT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
+        vs_2, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
 		fs_2, {},
 		{}
     );

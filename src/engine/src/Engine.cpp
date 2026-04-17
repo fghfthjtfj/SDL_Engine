@@ -259,7 +259,7 @@ void Engine::PrepareFunc(uint8_t slot)
 	batch_builder->BuildComputePrepassBatches(pipe_manager, shader_manager);
 
 	PrepareFuncPrepassUndepended(slot);
-	PrepareFuncPrepassDepended(slot);
+	//PrepareFuncPrepassDepended(slot);
 	//auto r1 = PrepareFuncPrepassDepended_Original(slot);
 	//auto r2 = PrepareFuncPrepassDepended_Optimized(slot);
 	//g_stats_orig.Add(r1);

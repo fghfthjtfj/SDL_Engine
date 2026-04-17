@@ -55,7 +55,7 @@ void PIB_DataModule::StorePIB(BufferManager* bm, PassManager* rm, UploadTask* ta
     for (auto v : combined) s += std::to_string(v) + " ";
     SDL_Log("%s", s.c_str());*/
 
-    bm->UploadToPrePassTransferBuffer(task, safe_u32(combined.size()) * sizeof(uint32_t), combined.data());
+    bm->UploadToTransferBuffer(task, safe_u32(combined.size()) * sizeof(uint32_t), combined.data());
 }
 
 uint32_t PIB_DataModule::CalcuteEntityToBatch(BatchBuilder* bb, ObjectManager* om, PassManager* pm)

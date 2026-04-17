@@ -30,7 +30,7 @@ layout(set = 1, binding = 0, std140) uniform CurrentCameraUBO {
 
 void main()
 {
-    mat4 modelMatrix = models[gl_InstanceIndex]; 
+    mat4 modelMatrix = models[posIndex[gl_InstanceIndex]];
     vec4 worldPos = modelMatrix * vec4(a_pos, 1.0);
     
     gl_Position = cameras[currentCameraIndex].proj * 

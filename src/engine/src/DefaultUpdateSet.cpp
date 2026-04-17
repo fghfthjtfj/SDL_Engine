@@ -30,7 +30,7 @@ void DefaultUpdateSet::SetDefaultCameraUpdater(BufferManager* bm, CameraManager*
         SDL_Log("Default camera updater is already initialized.");
         return;
 	}
-    bm->CreatePrePassUpdateInstruction(DEFAULT_CAMERA_BUFFER,
+    bm->CreateUpdateInstruction(DEFAULT_CAMERA_BUFFER,
         [cm](SDL_GPUCopyPass* cp, BufferManager* bm, UploadTask& task)
     {
         cm->StoreActiveCamera(bm, &task);
@@ -51,7 +51,7 @@ void DefaultUpdateSet::SetDefaultPositionUpdater(BufferManager* buffer_manager, 
         SDL_Log("Default position updater is already initialized.");
 		return;
 	}
-    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_TRANSFORM_BUFFER,
+    buffer_manager->CreateUpdateInstruction(DEFAULT_TRANSFORM_BUFFER,
 
         [om, tdm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
@@ -107,7 +107,7 @@ void DefaultUpdateSet::SetDefaultPositionIndexUpdater(BufferManager* buffer_mana
 		SDL_Log("Default position index updater is already initialized.");
 		return;
 	}
-    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_POSITION_INDEX_BUFFER,
+    buffer_manager->CreateUpdateInstruction(DEFAULT_POSITION_INDEX_BUFFER,
         [rm, pib_dm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         pib_dm->StorePIB(buffer_manager, rm, &task);
@@ -165,7 +165,7 @@ void DefaultUpdateSet::SetDefaultLightCamerasUpdater(BufferManager* buffer_manag
 		SDL_Log("Default light cameras updater is already initialized.");
 		return;
 	}
-    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_LIGHT_CAMERA_BUFFER,
+    buffer_manager->CreateUpdateInstruction(DEFAULT_LIGHT_CAMERA_BUFFER,
         [om, ldm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         SceneData* scene = om->GetActiveScene();
@@ -191,7 +191,7 @@ void DefaultUpdateSet::SetDefaultIndirectUpdater(BufferManager* buffer_manager, 
         SDL_Log("Default indirect updater is already initialized.");
         return;
     }
-    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_INDIRECT_BUFFER,
+    buffer_manager->CreateUpdateInstruction(DEFAULT_INDIRECT_BUFFER,
         [pm, idm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         idm->StoreIndirect(buffer_manager, pm, &task);

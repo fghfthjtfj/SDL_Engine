@@ -56,7 +56,7 @@ void DefaultRenderPassSet::SetDefaultShadowRenderPass(PassManager* rm, TextureMa
                 uint32_t byte_offset = (1 + cameraIndex) * commands_byte_offset;
                 if (light.needsUpdate) {
                     SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
-                    rm->RenderPassStandardBody(cb, &rp, bm, byte_offset);
+                    rm->RenderPassStandardBody(cb, &rp, bm, 0);
 
                     auto cp = SDL_BeginGPUCopyPass(cb);
                     SDL_GPUTextureLocation src = {
@@ -81,7 +81,7 @@ void DefaultRenderPassSet::SetDefaultShadowRenderPass(PassManager* rm, TextureMa
                     if (light.needsUpdate) {
 
                         SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
-                        rm->RenderPassStandardBody(cb, &rp, bm, byte_offset);
+                        rm->RenderPassStandardBody(cb, &rp, bm, 0);
 
                         auto cp = SDL_BeginGPUCopyPass(cb);
                         SDL_GPUTextureLocation src = {

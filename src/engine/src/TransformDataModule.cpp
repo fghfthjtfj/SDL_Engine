@@ -91,7 +91,7 @@ void TransformDataModule::StoreTransforms(BufferManager* bm, UploadTask* task, O
         mat[14] = pos.h[i]; 
         mat[15] = pos.l[i]; 
 
-        bm->UploadToPrePassTransferBuffer(task, sizeof(mat), mat);
+        bm->UploadToTransferBuffer(task, sizeof(mat), mat);
         
     });
 }
