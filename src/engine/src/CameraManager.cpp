@@ -41,7 +41,7 @@ void CameraManager::StoreActiveCamera(BufferManager* bm, UploadTask* task)
     data.view = cam->GetView();
     data.proj = cam->GetProj();
 
-	bm->UploadToTransferBuffer(task, sizeof(CameraData), &data);
+	bm->UploadToPrePassTransferBuffer(task, sizeof(CameraData), &data);
 }
 
 //void CameraManager::StoreActiveCamera(BufferManager* bm, UploadTask* task, SDL_GPUCommandBuffer* cb)

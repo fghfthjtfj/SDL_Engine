@@ -19,6 +19,10 @@ inline constexpr const char* MAIN_PASS = "_DefaultMainRenderPass";
 inline constexpr const char* SHADOW_PASS = "_DefaultShadowRenderPass";
 inline constexpr const char* CULLING_PREPASS = "_DefaultCullingComputePass";
 inline constexpr const char* CULLING_ZEROS_PREPASS = "_DefaultCullingZerosComputePass";
+inline constexpr const char* CULLING_OFFSET_PREPASS = "_DefaultCullingOffsetComputePass";
+inline constexpr const char* CULLING_OUT_INDIRECT_PREPASS = "_DefaultCullingOutIndirectComputePass";
+inline constexpr const char* CULLING_WRITE_PASS = "_DefaultCullingWritePass";
+
 
 class PassManager
 {
@@ -33,7 +37,7 @@ public:
 	void ExecutePrepassesSteps(SDL_GPUCommandBuffer* cb, uint8_t pass_frame);
 	// Íà÷èíàåò è çàâåğøàåò SDL_GPURenderPass
 	// Starts and end SDL_GPURenderPass
-	void RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass, BufferManager* vm); // ÄÎÁÀÂÈÒÜ ÀÍÀËÎÃÈ×ÍÓŞ COMPUTE STEP ËÎÃÈÊÓ ÊÎÍÑÒÀÍÒ!
+	void RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass, BufferManager* bm, uint32_t additional_offset); // ÄÎÁÀÂÈÒÜ ÀÍÀËÎÃÈ×ÍÓŞ COMPUTE STEP ËÎÃÈÊÓ ÊÎÍÑÒÀÍÒ!
 	void WaitComputePrepass(SDL_GPUDevice* dev);
 	// Íà÷èíàåò è çàâåğøàåò SDL_GPUComputePass
 	// Starts and end SDL_GPUComputePass
@@ -51,7 +55,7 @@ public:
 	~PassManager();
 
 private:
-	inline void ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* SDL_rp, const RenderPassStep& rp, BufferManager* bm);
+	inline void ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* SDL_rp, const RenderPassStep& rp, BufferManager* bm, uint32_t additional_offset);
 	std::unordered_map<RenderPassName, std::unique_ptr<RenderPassStep>> render_steps;
 	std::unordered_map<ComputePassName, std::unique_ptr<ComputePassStep>> compute_steps;
 	std::unordered_map<ComputePrepassName, std::unique_ptr<ComputePassStep>> compute_prepass_steps;

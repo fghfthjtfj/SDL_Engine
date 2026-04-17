@@ -55,5 +55,29 @@ void PIB_DataModule::StorePIB(BufferManager* bm, PassManager* rm, UploadTask* ta
     for (auto v : combined) s += std::to_string(v) + " ";
     SDL_Log("%s", s.c_str());*/
 
-    bm->UploadToTransferBuffer(task, safe_u32(combined.size()) * sizeof(uint32_t), combined.data());
+    bm->UploadToPrePassTransferBuffer(task, safe_u32(combined.size()) * sizeof(uint32_t), combined.data());
+}
+
+uint32_t PIB_DataModule::CalcuteEntityToBatch(BatchBuilder* bb, ObjectManager* om, PassManager* pm)
+{
+    return CalculatePIBSizes(bb, om, pm);
+}
+
+void PIB_DataModule::StoreEntityToBatch(BufferManager* bm, PassManager* pm, UploadTask* task)
+{
+    uint32_t cmd_idx = 0;
+    for (RenderPassStep* rp : pm->GetOrderedRenderPasses()){
+        for (const auto& [_, sb] : rp->shader_batches){
+            for (const auto& [_, ab] : sb.atlases_batches){
+                for (const auto& [_, tb] : ab.texture_batches){
+                    for (const auto& [_, mb] : tb.model_batches){
+                        for (uint32_t id : mb.pib_sub_buffer) {
+                            bm->UploadToPrePassTransferBuffer(task, sizeof(uint32_t), &cmd_idx);
+                        }
+                        cmd_idx++;
+                    }
+                }
+            }
+        }
+    }
 }

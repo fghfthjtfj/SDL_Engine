@@ -30,6 +30,7 @@
 #include "config.h"
 #include "UI_ImGui.h"
 
+struct PrepassTimingReport;
 static bool UPS_priority = true;
 class Engine
 {
@@ -80,6 +81,8 @@ public:
 private:
     void PrepareFuncPrepassUndepended(uint8_t idx);
     void PrepareFuncPrepassDepended(uint8_t idx);
+    PrepassTimingReport PrepareFuncPrepassDepended_Original(uint8_t slot);
+    PrepassTimingReport PrepareFuncPrepassDepended_Optimized(uint8_t slot);
 
     float width;
     float height;

@@ -30,7 +30,7 @@ void DefaultUpdateSet::SetDefaultCameraUpdater(BufferManager* bm, CameraManager*
         SDL_Log("Default camera updater is already initialized.");
         return;
 	}
-    bm->CreateUpdateInstruction(DEFAULT_CAMERA_BUFFER,
+    bm->CreatePrePassUpdateInstruction(DEFAULT_CAMERA_BUFFER,
         [cm](SDL_GPUCopyPass* cp, BufferManager* bm, UploadTask& task)
     {
         cm->StoreActiveCamera(bm, &task);
@@ -51,7 +51,7 @@ void DefaultUpdateSet::SetDefaultPositionUpdater(BufferManager* buffer_manager, 
         SDL_Log("Default position updater is already initialized.");
 		return;
 	}
-    buffer_manager->CreateUpdateInstruction(DEFAULT_TRANSFORM_BUFFER,
+    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_TRANSFORM_BUFFER,
 
         [om, tdm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
@@ -107,7 +107,7 @@ void DefaultUpdateSet::SetDefaultPositionIndexUpdater(BufferManager* buffer_mana
 		SDL_Log("Default position index updater is already initialized.");
 		return;
 	}
-    buffer_manager->CreateUpdateInstruction(DEFAULT_POSITION_INDEX_BUFFER,
+    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_POSITION_INDEX_BUFFER,
         [rm, pib_dm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         pib_dm->StorePIB(buffer_manager, rm, &task);
@@ -165,7 +165,7 @@ void DefaultUpdateSet::SetDefaultLightCamerasUpdater(BufferManager* buffer_manag
 		SDL_Log("Default light cameras updater is already initialized.");
 		return;
 	}
-    buffer_manager->CreateUpdateInstruction(DEFAULT_LIGHT_CAMERA_BUFFER,
+    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_LIGHT_CAMERA_BUFFER,
         [om, ldm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         SceneData* scene = om->GetActiveScene();
@@ -191,7 +191,7 @@ void DefaultUpdateSet::SetDefaultIndirectUpdater(BufferManager* buffer_manager, 
         SDL_Log("Default indirect updater is already initialized.");
         return;
     }
-    buffer_manager->CreateUpdateInstruction(DEFAULT_INDIRECT_BUFFER,
+    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_INDIRECT_BUFFER,
         [pm, idm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         idm->StoreIndirect(buffer_manager, pm, &task);
@@ -210,7 +210,7 @@ void DefaultUpdateSet::SetDefaultBoundSphereUpdater(BufferManager* buffer_manage
         SDL_Log("Default bound sphere updater is already initialized.");
     }
 
-    buffer_manager->CreateUpdateInstruction(DEFAULT_BOUND_SPHERE_BUFFER,
+    buffer_manager->CreatePrePassUpdateInstruction(DEFAULT_BOUND_SPHERE_BUFFER,
         [pm, bdm](SDL_GPUCopyPass* cp, BufferManager* buffer_manager, UploadTask& task)
     {
         bdm->StoreSpheres(buffer_manager, &task, pm);
@@ -231,6 +231,52 @@ void DefaultUpdateSet::SetDefaultCountBufferUpdater(BufferManager* bm, ObjectMan
         [om, cdm, ldm, bb]() -> uint32_t {
         return cdm->CountBufferSize(om, om->GetActiveScene(), bb, ldm);
     }
+    );
+}
+
+void DefaultUpdateSet::SetDefaultOffsetBufferUpdater(BufferManager* bm, ObjectManager* om, CountBufferDataModule* cdm, LightDataModule* ldm, BatchBuilder* bb)
+{
+    bm->CreatePrePassUpdateInstruction(DEFAULT_OFFSET_BUFFER,
+        nullptr,
+
+        [om, cdm, ldm, bb]() -> uint32_t {
+            return cdm->CountBufferSize(om, om->GetActiveScene(), bb, ldm) - 1;
+        }
+    );
+}
+
+void DefaultUpdateSet::SetDefaultEntityToBatchUpdater(BufferManager* bm, ObjectManager* om, PassManager* pm, BatchBuilder* bb, PIB_DataModule* pdm)
+{
+    bm->CreatePrePassUpdateInstruction(DEFAULT_ENTITY_TO_BATCH_BUFFER,
+        [pdm, pm](SDL_GPUCopyPass* cp, BufferManager* bm, UploadTask& task) {
+            pdm->StoreEntityToBatch(bm, pm, &task);
+        },
+        [om, pm, bb, pdm]() -> uint32_t {
+            return pdm->CalcuteEntityToBatch(bb, om, pm);
+        }
+    );
+}
+
+void DefaultUpdateSet::SetDefaultOutTransformUpdater(BufferManager* bm, TransformDataModule* tdm)
+{
+    bm->CreatePostReadbackUpdateInstruction(DEFAULT_OUT_TRANSFORM_BUFFER,
+        nullptr,
+
+        [tdm]() -> uint32_t {
+            return tdm->CalculateOutTransformSize();
+        }
+    );
+}
+
+void DefaultUpdateSet::SetDefaultOutIndirectUpldater(BufferManager* bm, ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm)
+{
+    bm->CreatePrePassUpdateInstruction(DEFAULT_OUT_INDIRECT_BUFFER,
+        nullptr,
+        [om, bb, ldm]() -> uint32_t {
+            uint32_t num_cameras_total = ldm->AskNumLightCameras(om, om->GetActiveScene()) + 1; // +1 main
+            return num_cameras_total * bb->AskNumCommands() * sizeof(SDL_GPUIndexedIndirectDrawCommand);
+
+        }
     );
 }
 

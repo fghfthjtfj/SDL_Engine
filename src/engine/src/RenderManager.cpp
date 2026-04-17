@@ -112,7 +112,7 @@ void PassManager::ExecutePrepassesSteps(SDL_GPUCommandBuffer* cb, uint8_t pass_f
 	}
 }
 
-void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass_step, BufferManager* bm)
+void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass_step, BufferManager* bm, uint32_t additional_offset)
 {
 	SDL_GPURenderPass* rp = nullptr;
 		rp = SDL_BeginGPURenderPass(cb,
@@ -123,7 +123,7 @@ void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassSte
 			SDL_Log("PassManager::ExecutePassesSteps: Failed to begin render pass!");
 			return;
 		}
-		ExecuteRenderBatches(cb, rp, *render_pass_step, bm);
+		ExecuteRenderBatches(cb, rp, *render_pass_step, bm, additional_offset);
 		SDL_EndGPURenderPass(rp);
 	
 }
@@ -147,7 +147,7 @@ void PassManager::ComputePassStandardBody(SDL_GPUCommandBuffer* cb, ComputePassS
 		cmp = SDL_BeginGPUComputePass(cb, nullptr, 0, storage_buffer_bindings.data(), safe_u32(storage_buffer_bindings.size()));
 		SDL_BindGPUComputePipeline(cmp, shader_batch.pipeline);
 		bm->BindGPUComputeRO_Buffers(cmp, 0, shader_batch.ro_storage_buffers, pass_frame);
-		SDL_DispatchGPUCompute(cmp, 1, 1, 1);
+		SDL_DispatchGPUCompute(cmp, 1, 1, 1); // 256*64 = 16384 треда, гарантированно покрывает
 		SDL_EndGPUComputePass(cmp);
 	};
 }
@@ -187,7 +187,7 @@ PassManager::~PassManager()
 	render_steps.clear();
 }
 
-inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* rp, const RenderPassStep& render_pass_step, BufferManager* bm)
+inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* rp, const RenderPassStep& render_pass_step, BufferManager* bm, uint32_t additional_offset)
 {
 	int draw_calls = 0;
 	for (auto& [_, shader_batch] : render_pass_step.shader_batches)
@@ -230,8 +230,9 @@ inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPUR
 				}
 
 				SDL_DrawGPUIndexedPrimitivesIndirect(rp,
-					bm->_GetGPUBufferForFrame(bm->GetBufferData(DEFAULT_INDIRECT_BUFFER), render_frame),
-					safe_u32(texture_batch.indirect_command_index * sizeof(SDL_GPUIndexedIndirectDrawCommand)),
+					bm->_GetGPUBufferForFrame(bm->GetBufferData(DEFAULT_OUT_INDIRECT_BUFFER), render_frame),
+					safe_u32(additional_offset +
+						texture_batch.indirect_command_index * sizeof(SDL_GPUIndexedIndirectDrawCommand)),
 					safe_u32(texture_batch.model_batches.size())
 				);
 				draw_calls++;

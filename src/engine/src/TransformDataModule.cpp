@@ -91,7 +91,7 @@ void TransformDataModule::StoreTransforms(BufferManager* bm, UploadTask* task, O
         mat[14] = pos.h[i]; 
         mat[15] = pos.l[i]; 
 
-        bm->UploadToTransferBuffer(task, sizeof(mat), mat);
+        bm->UploadToPrePassTransferBuffer(task, sizeof(mat), mat);
         
     });
 }
@@ -128,7 +128,7 @@ uint32_t TransformDataModule::CalculateOutTransformSize()
         return 0;
     }
 
-    return *reinterpret_cast<const uint32_t*>(size_ptr.data());
+    return *reinterpret_cast<const uint32_t*>(size_ptr.data()) * sizeof(glm::mat4);
 }
 
 

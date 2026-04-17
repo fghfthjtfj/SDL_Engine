@@ -21,8 +21,10 @@ inline constexpr const char* DEFAULT_LIGHT_CAMERA_BUFFER = "DefaultLightCameraBu
 inline constexpr const char* DEFAULT_INDIRECT_BUFFER = "DefaultIndirectBuffer";
 inline constexpr const char* DEFAULT_ENTITY_TO_BATCH_BUFFER = "DefaultEntityToBatchBuffer";
 inline constexpr const char* DEFAULT_BOUND_SPHERE_BUFFER = "DefaultBoundSphereBuffer";
-inline constexpr const char* DEFAULT_COUNT_BUFFER = "DefaultCounttBuffer";
+inline constexpr const char* DEFAULT_COUNT_BUFFER = "DefaultCountBuffer";
+inline constexpr const char* DEFAULT_OFFSET_BUFFER = "DefaultOffsetBuffer";
 inline constexpr const char* DEFAULT_OUT_TRANSFORM_BUFFER = "DefaultOutTransformBuffer";
+inline constexpr const char* DEFAULT_OUT_INDIRECT_BUFFER = "DefaultOutIndirectBuffer";
 
 struct PendingDestroy {
 	SDL_GPUBuffer* buf;

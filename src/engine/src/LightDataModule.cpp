@@ -155,7 +155,7 @@ inline void StoreSpotLightCamera(BufferManager* bm, UploadTask* task, Positions&
     lc.view = view;
     lc.proj = proj;
 
-    bm->UploadToTransferBuffer(task, sizeof(LightCamera), &lc);
+    bm->UploadToPrePassTransferBuffer(task, sizeof(LightCamera), &lc);
 }
 
 static const glm::vec3 cubeDirs[6] = {
@@ -185,7 +185,7 @@ inline void StoreSphereLightCameras(BufferManager* bm, UploadTask* task, Positio
         LightCamera lc{};
         lc.view = view;
         lc.proj = proj;
-        bm->UploadToTransferBuffer(task, sizeof(LightCamera), &lc);
+        bm->UploadToPrePassTransferBuffer(task, sizeof(LightCamera), &lc);
 	}
 }
 

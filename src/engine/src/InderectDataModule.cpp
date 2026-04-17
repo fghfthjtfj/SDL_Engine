@@ -48,7 +48,7 @@ void InderectDataModule::StoreIndirect(BufferManager* bm, PassManager* pm, Uploa
 						data.vertex_offset = model_batch.submesh->vertexOffset;
 						data.first_instance = model_batch.firstInstance;
 
-						bm->UploadToTransferBuffer(task, sizeof(data), &data);
+						bm->UploadToPrePassTransferBuffer(task, sizeof(data), &data);
 					}
 				}
 			}

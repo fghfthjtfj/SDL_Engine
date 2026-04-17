@@ -26,7 +26,10 @@ namespace DefaultUpdateSet
 	void SetDefaultIndirectUpdater(BufferManager* buffer_manager, PassManager* pm, InderectDataModule* idm);
 	void SetDefaultBoundSphereUpdater(BufferManager* buffer_manager, PassManager* pm, ModelManager* mm, BoundSphereDataModule* bdm);
 	void SetDefaultCountBufferUpdater(BufferManager* bm, ObjectManager* om, CountBufferDataModule* cdm, LightDataModule* ldm, BatchBuilder* bb);
+	void SetDefaultOffsetBufferUpdater(BufferManager* bm, ObjectManager* om, CountBufferDataModule* cdm, LightDataModule* ldm, BatchBuilder* bb);
+	void SetDefaultEntityToBatchUpdater(BufferManager* bm, ObjectManager* om, PassManager* pm, BatchBuilder* bb, PIB_DataModule* pdm);
 	void SetDefaultOutTransformUpdater(BufferManager* bm, TransformDataModule* tdm);
+	void SetDefaultOutIndirectUpldater(BufferManager* bm, ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm);
 
 	void SetDefaultCountReader(BufferManager* bm, TransformDataModule* tdm);
 	

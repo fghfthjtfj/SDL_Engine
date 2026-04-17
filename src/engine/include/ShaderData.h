@@ -86,7 +86,7 @@ struct ComputeShaderProgram {
     std::vector<BufferData*> rw_storage_buffers;
     std::vector<BufferData*> ro_storage_buffers; 
     ComputePassStep* associated_compute_pass = nullptr;
-    std::function<void(const PushConstantBinder&, const void*)> push_func = {};
+    std::function<void(const PushConstantBinder&, const void*)> push_func = nullptr;
 
     template<typename T, typename Fn>
     void BindPushConstants(Fn&& fn) {

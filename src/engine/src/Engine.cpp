@@ -134,7 +134,120 @@
 //	slot_controller->SetSlotState(slot, UPLOADING);
 //	slot_controller->SetSlotState(slot, UPLOADED);
 //}
-void Engine::PrepareFunc(uint8_t slot) {
+struct FenceWaitResult {
+	int64_t spin_us;
+	int64_t kernel_us;
+	int64_t total_us;
+};
+
+static FenceWaitResult SpinThenWait(SDL_GPUDevice* dev, SDL_GPUFence* fence)
+{
+	using Clock = std::chrono::steady_clock;
+	auto t0 = Clock::now();
+	while (!SDL_QueryGPUFence(dev, fence))
+		_mm_pause();
+	auto t1 = Clock::now();
+	SDL_WaitForGPUFences(dev, true, &fence, 1);
+	auto t2 = Clock::now();
+	return {
+		std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count(),
+		std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count(),
+		std::chrono::duration_cast<std::chrono::microseconds>(t2 - t0).count()
+	};
+}
+
+static FenceWaitResult PlainWait(SDL_GPUDevice* dev, SDL_GPUFence* fence)
+{
+	using Clock = std::chrono::steady_clock;
+	auto t0 = Clock::now();
+	SDL_WaitForGPUFences(dev, true, &fence, 1);
+	auto t1 = Clock::now();
+	int64_t us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+	return { 0, us, us };
+}
+
+struct PrepassTimingReport {
+	const char* variant;
+	FenceWaitResult fence_prepass_task;
+	FenceWaitResult fence_prepass;
+	FenceWaitResult fence_download;
+	FenceWaitResult fence_postreadback;
+	int64_t total_func_us;
+};
+
+struct FenceStats {
+	std::vector<int64_t> spin, kernel, total;
+
+	void Add(const FenceWaitResult& r) {
+		spin.push_back(r.spin_us);
+		kernel.push_back(r.kernel_us);
+		total.push_back(r.total_us);
+	}
+
+	struct Agg { int64_t avg, p50, p95, max; };
+	static Agg Compute(std::vector<int64_t> v) {
+		std::sort(v.begin(), v.end());
+		int64_t sum = 0; for (auto x : v) sum += x;
+		return { sum / (int64_t)v.size(), v[v.size() * 50 / 100], v[v.size() * 95 / 100], v.back() };
+	}
+
+	void PrintRow(const char* label) const {
+		auto sp = Compute(spin);
+		auto ke = Compute(kernel);
+		auto to = Compute(total);
+		printf("  %-20s  spin  µs: avg=%5lld  p50=%5lld  p95=%5lld  max=%6lld\n", label, sp.avg, sp.p50, sp.p95, sp.max);
+		printf("  %-20s  kernel µs: avg=%5lld  p50=%5lld  p95=%5lld  max=%6lld\n", "", ke.avg, ke.p50, ke.p95, ke.max);
+		printf("  %-20s  total  µs: avg=%5lld  p50=%5lld  p95=%5lld  max=%6lld\n", "", to.avg, to.p50, to.p95, to.max);
+	}
+};
+
+struct VariantStats {
+	const char* variant;
+	bool prepass_eliminated = false;
+	FenceStats fence_prepass_task, fence_prepass, fence_download, fence_postreadback;
+	std::vector<int64_t> total_func;
+	int n = 0;
+
+	void Add(const PrepassTimingReport& r) {
+		++n;
+		fence_prepass_task.Add(r.fence_prepass_task);
+		if (r.fence_prepass.total_us < 0)
+			prepass_eliminated = true;
+		else
+			fence_prepass.Add(r.fence_prepass);
+		fence_download.Add(r.fence_download);
+		fence_postreadback.Add(r.fence_postreadback);
+		total_func.push_back(r.total_func_us);
+	}
+
+	FenceStats::Agg TotalAgg() const { return FenceStats::Compute(total_func); }
+
+	void Print() const {
+		printf("\n┌── [%s]  %d samples ──────────────────────────────────────────\n", variant, n);
+		fence_prepass_task.PrintRow("fence_prepass_task");
+		printf("  ──────────────────────\n");
+		if (prepass_eliminated)
+			printf("  %-20s  [устранён — объединён в cb01]\n", "fence_prepass");
+		else
+			fence_prepass.PrintRow("fence_prepass");
+		printf("  ──────────────────────\n");
+		fence_download.PrintRow("fence_download");
+		printf("  ──────────────────────\n");
+		fence_postreadback.PrintRow("fence_postreadback");
+		printf("  ══════════════════════\n");
+		auto t = TotalAgg();
+		printf("  %-20s         avg=%5lld  p50=%5lld  p95=%5lld  max=%6lld\n", "TOTAL FUNC µs:", t.avg, t.p50, t.p95, t.max);
+		printf("└──────────────────────────────────────────────────────────────\n");
+	}
+};
+
+static VariantStats g_stats_orig{ "ORIGINAL" };
+static VariantStats g_stats_opt{ "OPTIMIZED" };
+static int          g_stat_calls = 0;
+static const int    PRINT_EVERY = 600;
+
+void Engine::PrepareFunc(uint8_t slot)
+{
 	slot_controller->SetSlotState(slot, PREPARING);
 	buffer_manager->logic_index = slot;
 
@@ -145,45 +258,148 @@ void Engine::PrepareFunc(uint8_t slot) {
 	batch_builder->BuildComputeBatches(pipe_manager, shader_manager);
 	batch_builder->BuildComputePrepassBatches(pipe_manager, shader_manager);
 
-	// Запустить 2 потоках
 	PrepareFuncPrepassUndepended(slot);
 	PrepareFuncPrepassDepended(slot);
+	//auto r1 = PrepareFuncPrepassDepended_Original(slot);
+	//auto r2 = PrepareFuncPrepassDepended_Optimized(slot);
+	//g_stats_orig.Add(r1);
+	//g_stats_opt.Add(r2);
+	//if (++g_stat_calls % PRINT_EVERY == 0) {
+	//	g_stats_orig.Print();
+	//	g_stats_opt.Print();
+	//	auto o = g_stats_orig.TotalAgg();
+	//	auto p = g_stats_opt.TotalAgg();
+	//	printf("\n▶ avg: %+lld µs (%+.1f%%)   p95: %+lld µs (%+.1f%%)   [%d вызовов]\n",
+	//		o.avg - p.avg, 100.0 * (o.avg - p.avg) / o.avg,
+	//		o.p95 - p.p95, 100.0 * (o.p95 - p.p95) / o.p95,
+	//		g_stat_calls);
+	//}
 
 	slot_controller->SetSlotState(slot, PREPARED);
 	slot_controller->SetSlotState(slot, UPLOADING);
 	slot_controller->SetSlotState(slot, UPLOADED);
 }
 
-
 void Engine::PrepareFuncPrepassUndepended(uint8_t slot)
 {
 	buffer_manager->MapUploadTransferBuffer();
 	texture_manager->MapUploadTransferBuffer();
 
-	SDL_GPUCommandBuffer* cb2 = SDL_AcquireGPUCommandBuffer(dev);
-	SDL_GPUCopyPass* cp2 = SDL_BeginGPUCopyPass(cb2);
+	SDL_GPUCommandBuffer* cb = SDL_AcquireGPUCommandBuffer(dev);
+	SDL_GPUCopyPass* cp = SDL_BeginGPUCopyPass(cb);
+	buffer_manager->ExecuteUpdateInstructions(cp);
+	buffer_manager->ExecuteUploadTasks(cp, slot);
+	texture_manager->ExecuteUploadTasks(cp);
+	SDL_EndGPUCopyPass(cp);
+	texture_manager->GenerateMipmaps(cb);
+	SDL_GPUFence* fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cb);
 
-	buffer_manager->ExecuteUpdateInstructions(cp2);
-	buffer_manager->ExecuteUploadTasks(cp2, slot);
-	texture_manager->ExecuteUploadTasks(cp2);
+	SDL_WaitForGPUFences(dev, true, &fence, 1);
+	SDL_ReleaseGPUFence(dev, fence);
 
-	SDL_EndGPUCopyPass(cp2);
-
-	texture_manager->GenerateMipmaps(cb2);
-
-	SDL_GPUFence* upload_fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cb2);
-
-
-
-	SDL_WaitForGPUFences(dev, true, &upload_fence, 1);
-	SDL_ReleaseGPUFence(dev, upload_fence); // Ждём и завершения скачивания.
-
-	buffer_manager->UnmapUploadTransferBuffer(); // Загрузок в обычном tb большей нет, анмапим
+	buffer_manager->UnmapUploadTransferBuffer();
 	texture_manager->UnmapUploadTransferBuffer();
 }
 
+//PrepassTimingReport Engine::PrepareFuncPrepassDepended_Original(uint8_t slot)
+//{
+//	using Clock = std::chrono::steady_clock;
+//	PrepassTimingReport r{ "ORIGINAL" };
+//	auto t0 = Clock::now();
+//
+//	buffer_manager->MapPrepassDependedTransferBuffer();
+//	SDL_GPUCommandBuffer* cb0 = SDL_AcquireGPUCommandBuffer(dev);
+//	SDL_GPUCopyPass* cp0 = SDL_BeginGPUCopyPass(cb0);
+//	buffer_manager->ExecutePrePassUpdateInstruction(cp0);
+//	buffer_manager->ExecutePrePassUploadTasks(cp0, slot);
+//	SDL_EndGPUCopyPass(cp0);
+//	buffer_manager->UnmapPrepassDependedTransferBuffer();
+//	SDL_GPUFence* f0 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb0);
+//	r.fence_prepass_task = PlainWait(dev, f0);
+//	SDL_ReleaseGPUFence(dev, f0);
+//
+//	SDL_GPUCommandBuffer* cb1 = SDL_AcquireGPUCommandBuffer(dev);
+//	pass_manager->ExecutePrepassesSteps(cb1, slot);
+//	SDL_GPUFence* f1 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb1);
+//	r.fence_prepass = PlainWait(dev, f1);
+//	SDL_ReleaseGPUFence(dev, f1);
+//
+//	buffer_manager->MapReadTransferBuffer();
+//	SDL_GPUCommandBuffer* cb2 = SDL_AcquireGPUCommandBuffer(dev);
+//	SDL_GPUCopyPass* cp2 = SDL_BeginGPUCopyPass(cb2);
+//	buffer_manager->ExecuteReadBackInstructionsSize();
+//	buffer_manager->ExecuteDownloadTasks(cp2, slot);
+//	SDL_EndGPUCopyPass(cp2);
+//	SDL_GPUFence* f2 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb2);
+//	r.fence_download = PlainWait(dev, f2);
+//	SDL_ReleaseGPUFence(dev, f2);
+//	buffer_manager->ExecuteReadBackInstructionsReader();
+//	buffer_manager->UnmapReadTransferBuffer();
+//
+//	buffer_manager->MapPrepassDependedTransferBuffer();
+//	SDL_GPUCommandBuffer* cb3 = SDL_AcquireGPUCommandBuffer(dev);
+//	SDL_GPUCopyPass* cp3 = SDL_BeginGPUCopyPass(cb3);
+//	buffer_manager->ExecutePostReadbackInstructions(cp3);
+//	buffer_manager->ExecutePostreadBackUploadTasks(cp3, slot);
+//	SDL_EndGPUCopyPass(cp3);
+//	SDL_GPUFence* f3 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb3);
+//	buffer_manager->UnmapPrepassDependedTransferBuffer();
+//	r.fence_postreadback = PlainWait(dev, f3);
+//	SDL_ReleaseGPUFence(dev, f3);
+//
+//	r.total_func_us = std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - t0).count();
+//	return r;
+//}
+//
+//PrepassTimingReport Engine::PrepareFuncPrepassDepended_Optimized(uint8_t slot)
+//{
+//	using Clock = std::chrono::steady_clock;
+//	PrepassTimingReport r{ "OPTIMIZED" };
+//	r.fence_prepass = { -1, -1, -1 };
+//	auto t0 = Clock::now();
+//
+//	buffer_manager->MapPrepassDependedTransferBuffer();
+//	SDL_GPUCommandBuffer* cb01 = SDL_AcquireGPUCommandBuffer(dev);
+//	SDL_GPUCopyPass* cp0 = SDL_BeginGPUCopyPass(cb01);
+//	buffer_manager->ExecutePrePassUpdateInstruction(cp0);
+//	buffer_manager->ExecutePrePassUploadTasks(cp0, slot);
+//	SDL_EndGPUCopyPass(cp0);
+//	buffer_manager->UnmapPrepassDependedTransferBuffer();
+//	pass_manager->ExecutePrepassesSteps(cb01, slot);
+//	SDL_GPUFence* f01 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb01);
+//	r.fence_prepass_task = SpinThenWait(dev, f01);
+//	SDL_ReleaseGPUFence(dev, f01);
+//
+//	buffer_manager->MapReadTransferBuffer();
+//	SDL_GPUCommandBuffer* cb2 = SDL_AcquireGPUCommandBuffer(dev);
+//	SDL_GPUCopyPass* cp2 = SDL_BeginGPUCopyPass(cb2);
+//	buffer_manager->ExecuteReadBackInstructionsSize();
+//	buffer_manager->ExecuteDownloadTasks(cp2, slot);
+//	SDL_EndGPUCopyPass(cp2);
+//	SDL_GPUFence* f2 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb2);
+//	r.fence_download = SpinThenWait(dev, f2);
+//	SDL_ReleaseGPUFence(dev, f2);
+//	buffer_manager->ExecuteReadBackInstructionsReader();
+//	buffer_manager->UnmapReadTransferBuffer();
+//
+//	buffer_manager->MapPrepassDependedTransferBuffer();
+//	SDL_GPUCommandBuffer* cb3 = SDL_AcquireGPUCommandBuffer(dev);
+//	SDL_GPUCopyPass* cp3 = SDL_BeginGPUCopyPass(cb3);
+//	buffer_manager->ExecutePostReadbackInstructions(cp3);
+//	buffer_manager->ExecutePostreadBackUploadTasks(cp3, slot);
+//	SDL_EndGPUCopyPass(cp3);
+//	SDL_GPUFence* f3 = SDL_SubmitGPUCommandBufferAndAcquireFence(cb3);
+//	buffer_manager->UnmapPrepassDependedTransferBuffer();
+//	r.fence_postreadback = SpinThenWait(dev, f3);
+//	SDL_ReleaseGPUFence(dev, f3);
+//
+//	r.total_func_us = std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - t0).count();
+//	return r;
+//}
+
 void Engine::PrepareFuncPrepassDepended(uint8_t slot)
 {
+	buffer_manager->MapPrepassDependedTransferBuffer();
 	SDL_GPUCommandBuffer* cb0 = SDL_AcquireGPUCommandBuffer(dev);
 	SDL_GPUCopyPass* cp0 = SDL_BeginGPUCopyPass(cb0);
 
@@ -191,7 +407,9 @@ void Engine::PrepareFuncPrepassDepended(uint8_t slot)
 	buffer_manager->ExecutePrePassUploadTasks(cp0, slot);
 
 	SDL_EndGPUCopyPass(cp0);
+	buffer_manager->UnmapPrepassDependedTransferBuffer();
 	SDL_GPUFence* prepass_task_fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cb0);
+
 	SDL_WaitForGPUFences(dev, true, &prepass_task_fence, 1);
 	SDL_ReleaseGPUFence(dev, prepass_task_fence);
 
@@ -221,14 +439,15 @@ void Engine::PrepareFuncPrepassDepended(uint8_t slot)
 	buffer_manager->ExecuteReadBackInstructionsReader();
 	buffer_manager->UnmapReadTransferBuffer();
 
-	// buffer_manager->MapPostReadBackUploadTB() // Появится в будущем для post read back UI
+
+	buffer_manager->MapPrepassDependedTransferBuffer();
 	SDL_GPUCommandBuffer* cb3 = SDL_AcquireGPUCommandBuffer(dev);
 	SDL_GPUCopyPass* cp3 = SDL_BeginGPUCopyPass(cb3);
-	// buffer_manager->ExecutePostReadBackUpdateInstructions(cp3); // Появится потом!
-	// buffer_manager->ExecutePostReadBackUploadTask;
-	// buffer_manager->UnmapPostReadTransferBuffer();
-
+	buffer_manager->ExecutePostReadbackInstructions(cp3);
+	buffer_manager->ExecutePostreadBackUploadTasks(cp3, slot);
+	
 	SDL_GPUFence* postreadbackUI_fence = SDL_SubmitGPUCommandBufferAndAcquireFence(cb3);
+	buffer_manager->UnmapPrepassDependedTransferBuffer();
 	SDL_WaitForGPUFences(dev, true, &postreadbackUI_fence, 1);
 	SDL_ReleaseGPUFence(dev, postreadbackUI_fence);
 }
@@ -381,6 +600,10 @@ Engine::Engine(SDL_Window* window, SDL_GPUDevice* dev, float width, float height
 	SetDefaultLightCamerasUpdater(buffer_manager, object_manager, light_data_module);
 	SetDefaultIndirectUpdater(buffer_manager, pass_manager, indirect_data_module);
 	SetDefaultBoundSphereUpdater(buffer_manager, pass_manager, model_manager, bound_sphere_data_module);
+	SetDefaultEntityToBatchUpdater(buffer_manager, object_manager, pass_manager, batch_builder, pib_data_module);
+	SetDefaultOutTransformUpdater(buffer_manager, transform_data_module);
+	SetDefaultOffsetBufferUpdater(buffer_manager, object_manager, count_data_module, light_data_module, batch_builder);
+	SetDefaultOutIndirectUpldater(buffer_manager, object_manager, batch_builder, light_data_module);
 
 	SetDefaultCountReader(buffer_manager, transform_data_module);
 	InitPasses();
@@ -414,9 +637,12 @@ void Engine::InitPasses()
 	using namespace DefaultRenderPassSet;
 	SetDefaultCullingComputeZerosPass(pass_manager, buffer_manager);
 	SetDefaultCullingComputeCountPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
+	SetDefaultCullingOutIndirectPass(pass_manager, buffer_manager);
 
-	SetDefaultShadowRenderPass(pass_manager, texture_manager, buffer_manager, object_manager);
+	SetDefaultShadowRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
 	SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager);
+	SetDefaultCullingOffstPass(pass_manager, buffer_manager);
+	SetDefaultCullingOutTransformPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
 }
 
 

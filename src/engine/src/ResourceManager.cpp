@@ -8,6 +8,7 @@ ResourceManager::ResourceManager(SDL_GPUDevice* device) {
     dev = device;
     CreateUploadTransferBuffer(BASE_TB_SIZE);
     CreateReadTransferBuffer(BASE_TB_SIZE);
+    CreatePrepassDependedTransferBuffer(BASE_TB_SIZE);
 }
 
 ResourceManager::~ResourceManager()

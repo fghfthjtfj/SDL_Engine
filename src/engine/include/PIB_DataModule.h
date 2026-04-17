@@ -11,8 +11,10 @@ class PIB_DataModule
 {
 public:
     PIB_DataModule();
-    uint32_t CalculatePIBSizes(BatchBuilder* bb, ObjectManager* om, PassManager* rm);
-    void StorePIB(BufferManager* bm, PassManager* rm, UploadTask* task);
+    uint32_t CalculatePIBSizes(BatchBuilder* bb, ObjectManager* om, PassManager* pm);
+    void StorePIB(BufferManager* bm, PassManager* pm, UploadTask* task);
+    uint32_t CalcuteEntityToBatch(BatchBuilder* bb, ObjectManager* om, PassManager* pm);
+    void StoreEntityToBatch(BufferManager* bm, PassManager* pm, UploadTask* task);
 
 private:
     bool dirty = true;

@@ -7,6 +7,7 @@
 #include "TransformDataModule.h"
 #include "LightDataModule.h"
 #include "InderectDataModule.h"
+#include "BatchBuilder.h"
 
 namespace DefaultRenderPassSet
 {
@@ -18,7 +19,7 @@ namespace DefaultRenderPassSet
 	bool main_pass_inited = false;
 }
 
-void DefaultRenderPassSet::SetDefaultShadowRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm, ObjectManager* om)
+void DefaultRenderPassSet::SetDefaultShadowRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm, ObjectManager* om, BatchBuilder* bb)
 {
     if (shadow_pass_inited) {
         SDL_Log("Default shadow render pass is already initialized.");
@@ -42,20 +43,20 @@ void DefaultRenderPassSet::SetDefaultShadowRenderPass(PassManager* rm, TextureMa
 
     auto shadowPass = rm->CreateRenderPass(
         SHADOW_PASS,
-        [rm, bm, om, tm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
+        [rm, bm, om, tm, bb](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
         {
             Uint32 cameraIndex = 0;      // общий для всех типов света
             Uint32 sphereLayer = 0;      // только для sphere
 
 			auto flat_array = tm->GetTextureAtlas(SHADOW_DEPTH_FLAT_ARRAY);
-
+            uint32_t commands_byte_offset = bb->AskNumCommands() * sizeof(SDL_GPUIndexedIndirectDrawCommand);
             om->ForEach<Positions, SpotLightComponent, ShadowCasterComponent>(om->GetActiveScene(),
                 [&](Positions& pos_el, SpotLightComponent& light, ShadowCasterComponent& sc) {
                 //SDL_Log("Shadow pass: cameraIndex=%u, spotLayer=%u", cameraIndex, spotLayer);
-
+                uint32_t byte_offset = (1 + cameraIndex) * commands_byte_offset;
                 if (light.needsUpdate) {
                     SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
-                    rm->RenderPassStandardBody(cb, &rp, bm);
+                    rm->RenderPassStandardBody(cb, &rp, bm, byte_offset);
 
                     auto cp = SDL_BeginGPUCopyPass(cb);
                     SDL_GPUTextureLocation src = {
@@ -76,10 +77,11 @@ void DefaultRenderPassSet::SetDefaultShadowRenderPass(PassManager* rm, TextureMa
             om->ForEach<Positions, SphereLightComponent, ShadowCasterComponent>(om->GetActiveScene(),
                 [&](Positions& pos_el, SphereLightComponent& light, ShadowCasterComponent& sc) {
                 for (int face = 0; face < 6; ++face) {
+                    uint32_t byte_offset = (1 + cameraIndex) * commands_byte_offset;
                     if (light.needsUpdate) {
 
                         SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
-                        rm->RenderPassStandardBody(cb, &rp, bm);
+                        rm->RenderPassStandardBody(cb, &rp, bm, byte_offset);
 
                         auto cp = SDL_BeginGPUCopyPass(cb);
                         SDL_GPUTextureLocation src = {
@@ -128,7 +130,7 @@ void DefaultRenderPassSet::SetDefaultMainRenderPass(PassManager* rm, TextureMana
         MAIN_PASS,
         [rm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
         {
-            rm->RenderPassStandardBody(cb, &rp, bm);
+            rm->RenderPassStandardBody(cb, &rp, bm, 0);
         },
         std::move(main_rptd),
         20 ,
@@ -171,5 +173,42 @@ void DefaultRenderPassSet::SetDefaultCullingComputeCountPass(PassManager* pm, Bu
         },
         10
 		);
+}
+
+void DefaultRenderPassSet::SetDefaultCullingOffstPass(PassManager* pm, BufferManager* bm)
+{
+    auto compute_pass = pm->CreateComputePrepass(CULLING_OFFSET_PREPASS,
+        [bm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame) {
+            pm->ComputePassStandardBody(cb, &cp, bm, nullptr, pass_frame);
+        },
+        20
+    );
+}
+
+void DefaultRenderPassSet::SetDefaultCullingOutIndirectPass(PassManager* pm, BufferManager* bm)
+{
+    pm->CreateComputePrepass(CULLING_OUT_INDIRECT_PREPASS,
+        [bm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame) {
+            ComputeCullingOutIndirectUniform data;
+            pm->ComputePassStandardBody(cb, &cp, bm, &data, pass_frame);
+        },
+        30
+    );
+}
+
+void DefaultRenderPassSet::SetDefaultCullingOutTransformPass(PassManager* pm, BufferManager* bm, ObjectManager* om, TransformDataModule* tdm, LightDataModule* ldm, InderectDataModule* idm)
+{
+    pm->CreateComputePass(
+        CULLING_WRITE_PASS,
+        [pm, bm, om, tdm, ldm, idm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame)
+        {
+            ComputeCullingCountUniform data;
+            data.num_instances = tdm->AskNumTransform(om, om->GetActiveScene());
+            data.num_commands = idm->AskNumCommands(pm);
+
+            pm->ComputePassStandardBody(cb, &cp, bm, &data, pass_frame);
+        },
+        0
+    );
 }
 

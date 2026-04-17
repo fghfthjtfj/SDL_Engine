@@ -235,7 +235,6 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
     dirty_batches = false;
     need_PIB_upload = true;
 }
-
 void BatchBuilder::FinilizeRenderBatches(PassManager* pass_manager)
 {
     auto UnpackUnorm16x2 = [](uint32_t packed, float& x, float& y) {
@@ -243,7 +242,7 @@ void BatchBuilder::FinilizeRenderBatches(PassManager* pass_manager)
         uint16_t ly = static_cast<uint16_t>(packed >> 16);
         x = lx / 65535.0f;
         y = ly / 65535.0f;
-    };
+        };
 
     int pass_idx = 0;
     uint32_t offset = 0;
@@ -306,6 +305,35 @@ void BatchBuilder::FinilizeRenderBatches(PassManager* pass_manager)
     }
     total_commands = command_index;
 }
+
+//void BatchBuilder::FinilizeRenderBatches(PassManager* pass_manager)
+//{
+//    auto UnpackUnorm16x2 = [](uint32_t packed, float& x, float& y) {
+//        uint16_t lx = static_cast<uint16_t>(packed & 0xFFFF);
+//        uint16_t ly = static_cast<uint16_t>(packed >> 16);
+//        x = lx / 65535.0f;
+//        y = ly / 65535.0f;
+//    };
+//
+//    uint32_t offset = 0;
+//    uint32_t command_index = 0;
+//
+//    for (RenderPassStep* rp : pass_manager->GetOrderedRenderPasses()) {
+//        for (auto& [sp_key, sb] : rp->shader_batches) {
+//            for (auto& [atlas_key, ab] : sb.atlases_batches) {
+//                for (auto& [tex_key, texb] : ab.texture_batches) {
+//                    texb.indirect_command_index = command_index;
+//                    for (auto& [model_key, mb] : texb.model_batches) {
+//                        mb.firstInstance = offset;
+//                        offset += mb.instanceCount;
+//                        command_index++;
+//                    }
+//                }
+//            }
+//        }
+//    }
+//    total_commands = command_index;
+//}
 
 void BatchBuilder::BuildComputeBatches(PipeManager* pm, ShaderManager* sm) {
     if (!sm || !sm->IsDirtyComputePipelines()) return;
