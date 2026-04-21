@@ -24,6 +24,9 @@ add_custom_command(TARGET Game POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/external/SDL3_image/lib/x64/SDL3_image.dll"
         $<TARGET_FILE_DIR:Game>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/external/SDL3_shadercross/bin/SDL3_shadercross.dll"
+        $<TARGET_FILE_DIR:Game>
 )
 
 # ============================================================

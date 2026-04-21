@@ -16,6 +16,7 @@ set(MANAGERS_SRC
     src/ResourceManager.cpp
     src/RenderManager.cpp
     src/ShaderManager.cpp
+    src/ShaderManager_ShadersCreate.cpp
     src/TextureManager.cpp
     src/ThreadController.cpp
     src/SlotController.cpp
@@ -200,7 +201,11 @@ add_library(SPIRV STATIC
 target_include_directories(SPIRV PUBLIC
     "${CMAKE_SOURCE_DIR}/external/SPIRV"
     
-    "${CMAKE_SOURCE_DIR}/external/SPIRV/include/spirv/unified1"  # на всякий случай
+    "${CMAKE_SOURCE_DIR}/external/SPIRV/include/spirv/unified1"
+)
+
+target_include_directories(Engine PUBLIC
+    "${CMAKE_SOURCE_DIR}/external/SDL3_shadercross/include"
 )
 
 # Подключаем всё к Engine как PUBLIC
@@ -209,6 +214,8 @@ target_link_libraries(Engine PUBLIC
     SPIRV
     "${CMAKE_SOURCE_DIR}/external/SDL3/lib/libSDL3.dll.a"
     "${CMAKE_SOURCE_DIR}/external/SDL3_image/lib/x64/SDL3_image.lib"
+    "${CMAKE_SOURCE_DIR}/external/SDL3_shadercross/lib/SDL3_shadercross.lib"
+
 )
 
 

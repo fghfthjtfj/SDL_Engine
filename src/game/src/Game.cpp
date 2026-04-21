@@ -156,117 +156,107 @@ SDL_AppResult Game::MainInit()
 		LocalOffsetProxy{ 0.0f, 0.0f, 2.0f },
         ShadowCasterComponent{}
     );
-//);
-    //ShaderBatchData render_command{
-    //.pipeline = pipe1,
-    //.vertexStorageBuffers = {
-    //    (*bufferManager)[DEFAULT_TRANSFORM_BUFFER],
-    //    (*bufferManager)[DEFAULT_CAMERA_BUFFER],
-    //    (*bufferManager)[DEFAULT_POSITION_INDEX_BUFFER]
-    //},
-    //.fragmentStorageBuffers = { (*bufferManager)["lightBuffer"] },
-    //.batches = (*objectManager).BuildPassBatches((*objectManager)["main_menu"], RenderPassType::Main)
-    //};
-    using namespace DefaultRenderPassSet;
 
-    ComputeShaderData csd_zeros = shaderManager->CreateComputeShader("../engine/shaders/culling_clear.comp.spv");
-    ComputeShaderProgram* csp_zeros = shaderManager->CreateComputeShaderProgram("csp_zeros", bufferManager,
-        csd_zeros,
-        { DEFAULT_COUNT_BUFFER },
-        {},
-        passManager->GetComputePrepassStep(CULLING_ZEROS_PREPASS)
-    );
+ //   using namespace DefaultRenderPassSet;
 
-	ComputeShaderData csd = shaderManager->CreateComputeShader("../engine/shaders/culling_count.comp.spv");
-    ComputeShaderProgram* cs_main_cameras = shaderManager->CreateComputeShaderProgram("compute_sp_main", bufferManager, 
-        csd, 
-        { DEFAULT_COUNT_BUFFER },
-        { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
-        passManager->GetComputePrepassStep(CULLING_PREPASS));
+ //   ComputeShaderData csd_zeros = shaderManager->CreateComputeShader("../engine/shaders/culling_clear.comp.spv");
+ //   ComputeShaderProgram* csp_zeros = shaderManager->CreateComputeShaderProgram("csp_zeros", bufferManager,
+ //       csd_zeros,
+ //       { DEFAULT_COUNT_BUFFER },
+ //       {},
+ //       passManager->GetComputePrepassStep(CULLING_ZEROS_PREPASS)
+ //   );
 
-    CameraManager* cm = cameraManager;
-    cs_main_cameras->BindPushConstants<ComputeCullingCountUniform>(
-        [cm](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
-            data.num_cameras = 1;
-            data.cmd_offset = 0;
-            binder.Push(0, data);
-    });
+	//ComputeShaderData csd = shaderManager->CreateComputeShader("../engine/shaders/culling_count.comp.spv");
+ //   ComputeShaderProgram* cs_main_cameras = shaderManager->CreateComputeShaderProgram("compute_sp_main", bufferManager, 
+ //       csd, 
+ //       { DEFAULT_COUNT_BUFFER },
+ //       { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
+ //       passManager->GetComputePrepassStep(CULLING_PREPASS));
 
-    ComputeShaderProgram* cs_light_cameras = shaderManager->CreateComputeShaderProgram("compute_sp_light", bufferManager,
-        csd, 
-        { DEFAULT_COUNT_BUFFER },
-        { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
-        passManager->GetComputePrepassStep(CULLING_PREPASS));
+ //   CameraManager* cm = cameraManager;
+ //   cs_main_cameras->BindPushConstants<ComputeCullingCountUniform>(
+ //       [cm](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
+ //           data.num_cameras = 1;
+ //           data.cmd_offset = 0;
+ //           binder.Push(0, data);
+ //   });
 
-    LightDataModule* ldm = engine->GetLightDataModule();
-    ObjectManager* om = objectManager;
-    BatchBuilder* bb = batchBuilder;
-    cs_light_cameras->BindPushConstants<ComputeCullingCountUniform>(
-        [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
-            data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
-            data.cmd_offset = bb->AskNumCommands() * 1;
-            binder.Push(0, data);
-    });
+ //   ComputeShaderProgram* cs_light_cameras = shaderManager->CreateComputeShaderProgram("compute_sp_light", bufferManager,
+ //       csd, 
+ //       { DEFAULT_COUNT_BUFFER },
+ //       { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
+ //       passManager->GetComputePrepassStep(CULLING_PREPASS));
 
-    ComputeShaderData csd_offset = shaderManager->CreateComputeShader("../engine/shaders/culling_offsets.comp.spv");
-    ComputeShaderProgram* csp_offsets = shaderManager->CreateComputeShaderProgram("csp_offsets", bufferManager, csd_offset,
-        { DEFAULT_OFFSET_BUFFER },
-        { DEFAULT_COUNT_BUFFER },
-        passManager->GetComputePrepassStep(CULLING_OFFSET_PREPASS)
-    );
+ //   LightDataModule* ldm = engine->GetLightDataModule();
+ //   ObjectManager* om = objectManager;
+ //   BatchBuilder* bb = batchBuilder;
+ //   cs_light_cameras->BindPushConstants<ComputeCullingCountUniform>(
+ //       [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
+ //           data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
+ //           data.cmd_offset = bb->AskNumCommands() * 1;
+ //           binder.Push(0, data);
+ //   });
 
-    ComputeShaderData csd_out_indirect = shaderManager->CreateComputeShader("../engine/shaders/culling_out_indirect.comp.spv");
-    ComputeShaderProgram* csp_out_indirect = shaderManager->CreateComputeShaderProgram("csp_out_indirect", bufferManager, csd_out_indirect,
-        { DEFAULT_OUT_INDIRECT_BUFFER },
-        { DEFAULT_INDIRECT_BUFFER, DEFAULT_COUNT_BUFFER, DEFAULT_OFFSET_BUFFER },
-        passManager->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS)
-    );
+ //   ComputeShaderData csd_offset = shaderManager->CreateComputeShader("../engine/shaders/culling_offsets.comp.spv");
+ //   ComputeShaderProgram* csp_offsets = shaderManager->CreateComputeShaderProgram("csp_offsets", bufferManager, csd_offset,
+ //       { DEFAULT_OFFSET_BUFFER },
+ //       { DEFAULT_COUNT_BUFFER },
+ //       passManager->GetComputePrepassStep(CULLING_OFFSET_PREPASS)
+ //   );
 
-    csp_out_indirect->BindPushConstants<ComputeCullingOutIndirectUniform>(
-        [bb](const PushConstantBinder& binder, ComputeCullingOutIndirectUniform data) {
-            data.num_commands = bb->AskNumCommands();
-            data.num_cameras = 1;
-            data.cmd_offset = 0;
-            binder.Push(0, data);
-        });
+ //   ComputeShaderData csd_out_indirect = shaderManager->CreateComputeShader("../engine/shaders/culling_out_indirect.comp.spv");
+ //   ComputeShaderProgram* csp_out_indirect = shaderManager->CreateComputeShaderProgram("csp_out_indirect", bufferManager, csd_out_indirect,
+ //       { DEFAULT_OUT_INDIRECT_BUFFER },
+ //       { DEFAULT_INDIRECT_BUFFER, DEFAULT_COUNT_BUFFER, DEFAULT_OFFSET_BUFFER },
+ //       passManager->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS)
+ //   );
 
-    ComputeShaderProgram* csp_out_indirect_lights = shaderManager->CreateComputeShaderProgram("csp_out_indirect_lights", bufferManager, csd_out_indirect,
-        { DEFAULT_OUT_INDIRECT_BUFFER },
-        { DEFAULT_INDIRECT_BUFFER, DEFAULT_COUNT_BUFFER, DEFAULT_OFFSET_BUFFER },
-        passManager->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS)
-    );
-    csp_out_indirect_lights->BindPushConstants<ComputeCullingOutIndirectUniform>(
-        [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingOutIndirectUniform data) {
-            data.num_commands = bb->AskNumCommands();
-            data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
-            data.cmd_offset = bb->AskNumCommands() * 1; // после main секции
-            binder.Push(0, data);
-        });
+ //   csp_out_indirect->BindPushConstants<ComputeCullingOutIndirectUniform>(
+ //       [bb](const PushConstantBinder& binder, ComputeCullingOutIndirectUniform data) {
+ //           data.num_commands = bb->AskNumCommands();
+ //           data.num_cameras = 1;
+ //           data.cmd_offset = 0;
+ //           binder.Push(0, data);
+ //       });
 
-    ComputeShaderData csd_culling_write = shaderManager->CreateComputeShader("../engine/shaders/culling_write.comp.spv");
-    ComputeShaderProgram* csp_culling_write_main = shaderManager->CreateComputeShaderProgram("csp_culling_write_main", bufferManager, csd_culling_write,
-        { DEFAULT_OFFSET_BUFFER, DEFAULT_OUT_TRANSFORM_BUFFER },
-    { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
-        passManager->GetComputePassStep(CULLING_WRITE_PASS)
-    );
-    csp_culling_write_main->BindPushConstants<ComputeCullingCountUniform>(
-        [cm](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
-            data.num_cameras = 1;
-            data.cmd_offset = 0;
-            binder.Push(0, data);
-        });
+ //   ComputeShaderProgram* csp_out_indirect_lights = shaderManager->CreateComputeShaderProgram("csp_out_indirect_lights", bufferManager, csd_out_indirect,
+ //       { DEFAULT_OUT_INDIRECT_BUFFER },
+ //       { DEFAULT_INDIRECT_BUFFER, DEFAULT_COUNT_BUFFER, DEFAULT_OFFSET_BUFFER },
+ //       passManager->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS)
+ //   );
+ //   csp_out_indirect_lights->BindPushConstants<ComputeCullingOutIndirectUniform>(
+ //       [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingOutIndirectUniform data) {
+ //           data.num_commands = bb->AskNumCommands();
+ //           data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
+ //           data.cmd_offset = bb->AskNumCommands() * 1; // после main секции
+ //           binder.Push(0, data);
+ //       });
 
-    ComputeShaderProgram* csp_culling_write_light = shaderManager->CreateComputeShaderProgram("csp_culling_write_light", bufferManager, csd_culling_write,
-        { DEFAULT_OFFSET_BUFFER, DEFAULT_OUT_TRANSFORM_BUFFER },
-    { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
-        passManager->GetComputePassStep(CULLING_WRITE_PASS)
-    );
-    csp_culling_write_light->BindPushConstants<ComputeCullingCountUniform>(
-        [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
-            data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
-            data.cmd_offset = bb->AskNumCommands() * 1;
-            binder.Push(0, data);
-        });
+ //   ComputeShaderData csd_culling_write = shaderManager->CreateComputeShader("../engine/shaders/culling_write.comp.spv");
+ //   ComputeShaderProgram* csp_culling_write_main = shaderManager->CreateComputeShaderProgram("csp_culling_write_main", bufferManager, csd_culling_write,
+ //       { DEFAULT_OFFSET_BUFFER, DEFAULT_OUT_TRANSFORM_BUFFER },
+ //   { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
+ //       passManager->GetComputePassStep(CULLING_WRITE_PASS)
+ //   );
+ //   csp_culling_write_main->BindPushConstants<ComputeCullingCountUniform>(
+ //       [cm](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
+ //           data.num_cameras = 1;
+ //           data.cmd_offset = 0;
+ //           binder.Push(0, data);
+ //       });
+
+ //   ComputeShaderProgram* csp_culling_write_light = shaderManager->CreateComputeShaderProgram("csp_culling_write_light", bufferManager, csd_culling_write,
+ //       { DEFAULT_OFFSET_BUFFER, DEFAULT_OUT_TRANSFORM_BUFFER },
+ //   { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
+ //       passManager->GetComputePassStep(CULLING_WRITE_PASS)
+ //   );
+ //   csp_culling_write_light->BindPushConstants<ComputeCullingCountUniform>(
+ //       [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
+ //           data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
+ //           data.cmd_offset = bb->AskNumCommands() * 1;
+ //           binder.Push(0, data);
+ //       });
     ChangeState(GameState::MAIN_MENU);
     
     return SDL_APP_CONTINUE;

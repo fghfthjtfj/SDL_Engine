@@ -36,7 +36,7 @@ public:
 	ShaderProgramDescription* GetShaderProgramDescription(const std::string& name);
 	ShaderProgram* GetShaderProgram(const std::string& name);
 
-	ComputeShaderProgram* GetComputeShaderData(const std::string& name);
+	ComputeShaderProgram* GetComputeShaderProgram(const std::string& name);
 
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgram>>& GetShaderPrograms() { return shader_programs; }
 	std::unordered_map<std::string, std::unique_ptr<ComputeShaderProgram>>& GetComputeShaderPrograms() { return compute_shader_programs; }
@@ -49,8 +49,10 @@ public:
 	~ShaderManager();
 
 private:
-	ShaderData CreateShader(const char* path);
 	void ReadVertexAttributes(const Uint8* shader_code, size_t shader_size, SDL_GPUVertexBufferDescription& vb,std::vector<SDL_GPUVertexAttribute>& attributes);
+	void ReadComputeMetadata(const Uint8* code, size_t size, ComputeShaderData& out);
+	ShaderData CreateShaderInternal(const Uint8* code, size_t size, SDL_GPUShaderStage stage);
+
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgramDescription>> shader_program_descriptions;
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgram>> shader_programs;
 	

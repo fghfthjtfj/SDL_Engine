@@ -40,7 +40,8 @@ struct FragmentShaderData {
 };
 
 struct ComputeShaderData {
-    ShaderData shader_data;
+	Uint8* spv_code = nullptr;
+	size_t spv_size = 0;
     Uint32 threadcount_x = 1;
     Uint32 threadcount_y = 1;
     Uint32 threadcount_z = 1;

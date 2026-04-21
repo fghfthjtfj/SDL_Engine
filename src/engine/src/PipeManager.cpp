@@ -127,8 +127,8 @@ SDL_GPUComputePipeline* PipeManager::GetOrCreateComputePipeline(ComputeShaderPro
 
     SDL_GPUComputePipelineCreateInfo ci;
     SDL_zero(ci);
-    ci.code = sp->cs.shader_data.shader_code;
-    ci.code_size = sp->cs.shader_data.shader_size;
+    ci.code = sp->cs.spv_code;
+	ci.code_size = sp->cs.spv_size;
     ci.entrypoint = "main";
 
     const SDL_GPUShaderFormat fmt = SDL_GetGPUShaderFormats(dev);

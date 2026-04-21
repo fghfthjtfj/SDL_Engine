@@ -1,39 +1,33 @@
-#version 450
-
-layout(location = 0) in vec3 a_pos;
-layout(location = 1) in vec2 a_uv;
-layout(location = 2) in vec3 a_normal;
-layout(location = 3) in vec3 a_tangent;
-
-// ===== instance / transform data =====
-layout(set = 0, binding = 0, std430) buffer ModelMatrixBlock {
-    mat4 models[];
+struct VSInput {
+    float3 a_pos     : POSITION;
+    float2 a_uv      : TEXCOORD0;  // не используется, но нужен для правильного stride
+    float3 a_normal  : NORMAL;     // не используется
+    float3 a_tangent : TANGENT;    // не используется
+    uint instanceID  : SV_InstanceID;
 };
 
-layout(set = 0, binding = 1, std430) buffer PositionIndexBuffer {
-    int posIndex[];
-};
+StructuredBuffer<float4x4> ModelMatrixBlock    : register(t0, space0);
+StructuredBuffer<int>      PositionIndexBuffer : register(t1, space0);
 
-// ===== light camera =====
 struct LightCamera {
-    mat4 view;
-    mat4 proj;
+    float4x4 view;
+    float4x4 proj;
 };
+StructuredBuffer<LightCamera> LightCameras : register(t2, space0);
 
-layout(set = 0, binding = 2, std430) buffer LightCameras {
-    LightCamera cameras[];  // ← один массив структур
-};
-
-layout(set = 1, binding = 0, std140) uniform CurrentCameraUBO {
+cbuffer CurrentCameraUBO : register(b0, space1) {
     int currentCameraIndex;
 };
 
-void main()
+float4 main(VSInput input) : SV_Position
 {
-    mat4 modelMatrix = models[posIndex[gl_InstanceIndex]];
-    vec4 worldPos = modelMatrix * vec4(a_pos, 1.0);
-    
-    gl_Position = cameras[currentCameraIndex].proj * 
-                  cameras[currentCameraIndex].view * 
-                  worldPos;
+    float4x4 modelMatrix = ModelMatrixBlock[PositionIndexBuffer[input.instanceID]];
+    float4 worldPos = mul(modelMatrix, float4(input.a_pos, 1.0));
+
+    // Не даём DXC вырезать атрибуты — прибавляем 0 к worldPos
+    worldPos.w += (input.a_uv.x + input.a_normal.x + input.a_tangent.x) * 0.0001
+                  - 0.0001; // результат всегда 0, но компилятор не знает
+
+    return mul(LightCameras[currentCameraIndex].proj,
+               mul(LightCameras[currentCameraIndex].view, worldPos));
 }

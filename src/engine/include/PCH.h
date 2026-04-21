@@ -21,3 +21,5 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlgpu3.h"
+#include "spirv_reflect.h"
+#include "SDL3_shadercross/SDL_shadercross.h"
