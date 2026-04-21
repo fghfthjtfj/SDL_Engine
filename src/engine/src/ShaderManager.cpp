@@ -1,9 +1,21 @@
 ﻿#include "PCH.h"
 #include "ShaderManager.h"
 #include "BufferManager.h"
+#include <filesystem>
 
 ShaderManager::ShaderManager(SDL_GPUDevice* device) {
     dev = device;
+
+    SDL_ShaderCross_Init();
+
+    // === НАДЁЖНЫЙ путь к папке кэша ===
+    const char* base = SDL_GetBasePath();                    // папка, где лежит .exe
+
+    m_cacheBasePath = std::string(base) + "shaders/shader_cache";
+
+    std::filesystem::create_directories(m_cacheBasePath);
+    SDL_Log("[Shader] Shader cache directory: %s", m_cacheBasePath.c_str());
+    SDL_free((void*)base);
 };
 
 ShaderProgramDescription* ShaderManager::CreateShaderProgramDescription(const std::string& name, bool enable_depth_test, bool enable_depth_write, bool enable_stencil_test, bool has_color_target, RenderPassStep* rp)
@@ -129,5 +141,12 @@ ShaderManager::~ShaderManager()
 		if (!prog->vs.attributes.empty())
 			prog->vs.attributes.clear();
 	}
+    for (auto& pair : compute_shader_programs) {
+        auto& prog = pair.second;
+        if (prog->cs.spv_code) {
+            SDL_free(prog->cs.spv_code);
+        }
+	}
 	shader_programs.clear();
+	SDL_ShaderCross_Quit();
 }

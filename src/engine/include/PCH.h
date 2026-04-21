@@ -10,10 +10,10 @@
 #include <memory>
 #include <unordered_set>
 #include <cstdint>
+#include <span>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
-#include <span>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -21,5 +21,4 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlgpu3.h"
-#include "spirv_reflect.h"
 #include "SDL3_shadercross/SDL_shadercross.h"

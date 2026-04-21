@@ -54,7 +54,6 @@ public:
 	LightDataModule* GetLightDataModule() const { return light_data_module; }
 
 
-    void InitPasses();
     //void Iterate();
     void PrepareFunc(uint8_t idx);
 
@@ -81,6 +80,10 @@ public:
 private:
     void PrepareFuncPrepassUndepended(uint8_t idx);
     void PrepareFuncPrepassDepended(uint8_t idx);
+
+	void InitDefaultBufferUpdaters();
+    void InitPasses();
+
     PrepassTimingReport PrepareFuncPrepassDepended_Original(uint8_t slot);
     PrepassTimingReport PrepareFuncPrepassDepended_Optimized(uint8_t slot);
 

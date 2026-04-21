@@ -5,6 +5,7 @@
 #include "SDL3/SDL_gpu.h"
 #include "Aliases.h"
 #include <memory>
+#include "SDL3_shadercross/SDL_shadercross.h"
 
 
 class BufferManager;
@@ -49,9 +50,11 @@ public:
 	~ShaderManager();
 
 private:
-	void ReadVertexAttributes(const Uint8* shader_code, size_t shader_size, SDL_GPUVertexBufferDescription& vb,std::vector<SDL_GPUVertexAttribute>& attributes);
-	void ReadComputeMetadata(const Uint8* code, size_t size, ComputeShaderData& out);
-	ShaderData CreateShaderInternal(const Uint8* code, size_t size, SDL_GPUShaderStage stage);
+	std::string BuildCachePath(const char* source_path, uint64_t hash) const;
+	void ReadVertexAttributes(const SDL_ShaderCross_GraphicsShaderMetadata* metadata, SDL_GPUVertexBufferDescription& vb, std::vector<SDL_GPUVertexAttribute>& attributes);
+	Uint8* LoadOrCompileSPIRV(const char* hlsl_path, SDL_ShaderCross_ShaderStage stage, size_t& out_size);
+
+	std::string m_cacheBasePath;
 
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgramDescription>> shader_program_descriptions;
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgram>> shader_programs;

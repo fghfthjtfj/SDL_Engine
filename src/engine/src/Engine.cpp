@@ -588,24 +588,7 @@ Engine::Engine(SDL_Window* window, SDL_GPUDevice* dev, float width, float height
 	bound_sphere_data_module = new BoundSphereDataModule();
 	count_data_module = new CountBufferDataModule();
 
-	using namespace DefaultUpdateSet;
-	SetDefaultCountBufferUpdater(buffer_manager, object_manager, count_data_module, light_data_module, batch_builder);
-
-	SetDefaultCameraUpdater(buffer_manager, camera_manager);
-	SetDefaultPositionUpdater(buffer_manager, object_manager, transform_data_module);
-	SetDefaultLightUpdater(buffer_manager, object_manager, camera_manager, light_data_module);
-	SetDefaultPositionIndexUpdater(buffer_manager, pass_manager, object_manager, pib_data_module, batch_builder);
-	SetDefaultVertexUpdater(buffer_manager, model_manager);
-	SetDefaultIndexUpdater(buffer_manager, model_manager);
-	SetDefaultLightCamerasUpdater(buffer_manager, object_manager, light_data_module);
-	SetDefaultIndirectUpdater(buffer_manager, pass_manager, indirect_data_module);
-	SetDefaultBoundSphereUpdater(buffer_manager, pass_manager, model_manager, bound_sphere_data_module);
-	SetDefaultEntityToBatchUpdater(buffer_manager, object_manager, pass_manager, batch_builder, pib_data_module);
-	SetDefaultOutTransformUpdater(buffer_manager, transform_data_module);
-	SetDefaultOffsetBufferUpdater(buffer_manager, object_manager, count_data_module, light_data_module, batch_builder);
-	SetDefaultOutIndirectUpldater(buffer_manager, object_manager, batch_builder, light_data_module);
-
-	SetDefaultCountReader(buffer_manager, transform_data_module);
+	InitDefaultBufferUpdaters();
 	InitPasses();
 	pass_manager->FillRenderPasses();
 
@@ -630,6 +613,29 @@ Engine::Engine(SDL_Window* window, SDL_GPUDevice* dev, float width, float height
 	init_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(dev, window);
 	init_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
 	ImGui_ImplSDLGPU3_Init(&init_info);
+}
+
+void Engine::InitDefaultBufferUpdaters()
+{
+	using namespace DefaultUpdateSet;
+
+	SetDefaultCameraUpdater(buffer_manager, camera_manager);
+	SetDefaultPositionUpdater(buffer_manager, object_manager, transform_data_module);
+	SetDefaultLightUpdater(buffer_manager, object_manager, camera_manager, light_data_module);
+	SetDefaultPositionIndexUpdater(buffer_manager, pass_manager, object_manager, pib_data_module, batch_builder);
+	SetDefaultVertexUpdater(buffer_manager, model_manager);
+	SetDefaultIndexUpdater(buffer_manager, model_manager);
+	SetDefaultLightCamerasUpdater(buffer_manager, object_manager, light_data_module);
+	SetDefaultIndirectUpdater(buffer_manager, pass_manager, indirect_data_module);
+
+	//SetDefaultCountBufferUpdater(buffer_manager, object_manager, count_data_module, light_data_module, batch_builder);
+	//SetDefaultBoundSphereUpdater(buffer_manager, pass_manager, model_manager, bound_sphere_data_module);
+	//SetDefaultEntityToBatchUpdater(buffer_manager, object_manager, pass_manager, batch_builder, pib_data_module);
+	//SetDefaultOutTransformUpdater(buffer_manager, transform_data_module);
+	//SetDefaultOffsetBufferUpdater(buffer_manager, object_manager, count_data_module, light_data_module, batch_builder);
+	//SetDefaultOutIndirectUpldater(buffer_manager, object_manager, batch_builder, light_data_module);
+	//SetDefaultCountReader(buffer_manager, transform_data_module);
+
 }
 
 void Engine::InitPasses()

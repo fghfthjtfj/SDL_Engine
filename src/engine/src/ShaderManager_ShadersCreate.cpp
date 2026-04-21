@@ -10,8 +10,9 @@ inline uint64_t HashBytes(const uint8_t* data, size_t size) {
     return hash;
 }
 
-inline std::string BuildCachePath(const char* source_path, uint64_t hash) {
-    // Вытаскиваем имя файла из пути
+std::string ShaderManager::BuildCachePath(const char* source_path, uint64_t hash) const
+{
+    // Имя файла без пути
     const char* filename = source_path;
     for (const char* p = source_path; *p; ++p) {
         if (*p == '/' || *p == '\\') filename = p + 1;
@@ -20,186 +21,263 @@ inline std::string BuildCachePath(const char* source_path, uint64_t hash) {
     char hash_str[17];
     SDL_snprintf(hash_str, sizeof(hash_str), "%016llx", (unsigned long long)hash);
 
-    return std::string("../shaders/shader_cache/") + filename + "." + hash_str + ".spv";
+    // Всегда используем / — SDL и Windows это понимают
+    return m_cacheBasePath + "/" + filename + "." + hash_str + ".spv";
 }
 
-ShaderData ShaderManager::CreateShaderInternal(const Uint8* code, size_t size, SDL_GPUShaderStage stage) {
-    SDL_GPUShaderCreateInfo sci; SDL_zero(sci);
-
-    const SDL_GPUShaderFormat supported = SDL_GetGPUShaderFormats(dev);
-    if (supported & SDL_GPU_SHADERFORMAT_DXIL)  sci.format = SDL_GPU_SHADERFORMAT_DXIL;
-    else if (supported & SDL_GPU_SHADERFORMAT_MSL)   sci.format = SDL_GPU_SHADERFORMAT_MSL;
-    else if (supported & SDL_GPU_SHADERFORMAT_SPIRV) sci.format = SDL_GPU_SHADERFORMAT_SPIRV;
-    else {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "No supported shader format found.");
-        return {};
-    }
-
-    sci.entrypoint = "main";
-    sci.code = code;
-    sci.code_size = size;
-    sci.stage = stage;
-
-    if (sci.format == SDL_GPU_SHADERFORMAT_SPIRV) {
-        SpvReflectShaderModule module;
-        if (spvReflectCreateShaderModule(size, code, &module) != SPV_REFLECT_RESULT_SUCCESS) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SPIRV-Reflect: Failed to parse SPIR-V");
-            return {};
-        }
-
-        uint32_t count = 0;
-        spvReflectEnumerateDescriptorBindings(&module, &count, nullptr);
-        std::vector<SpvReflectDescriptorBinding*> bindings(count);
-        if (count)
-            spvReflectEnumerateDescriptorBindings(&module, &count, bindings.data());
-
-        for (auto* b : bindings) {
-            switch (b->descriptor_type) {
-            case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
-            case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: ++sci.num_samplers;          break;
-            case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:          ++sci.num_storage_textures;  break;
-            case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:         ++sci.num_storage_buffers;   break;
-            case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:         ++sci.num_uniform_buffers;   break;
-            default: break;
-            }
-        }
-        spvReflectDestroyShaderModule(&module);
-    }
-
-    ShaderData result;
-    result.shader = SDL_CreateGPUShader(dev, &sci);
-    return result;
-}
-
-VertexShaderData ShaderManager::CreateVertexShader(const char* path) {
-    size_t size = 0;
-    Uint8* code = (Uint8*)SDL_LoadFile(path, &size);
-    if (!code) { SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load: %s", path); return {}; }
-
-    VertexShaderData vs;
-    vs.shader_data = CreateShaderInternal(code, size, SDL_GPU_SHADERSTAGE_VERTEX);
-    ReadVertexAttributes(code, size, vs.vb, vs.attributes);
-
-    SDL_free(code);
-    return vs;
-}
-
-FragmentShaderData ShaderManager::CreateFragmentShader(const char* path) {
-    size_t size = 0;
-    Uint8* code = (Uint8*)SDL_LoadFile(path, &size);
-    if (!code) { SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load: %s", path); return {}; }
-
-    FragmentShaderData fs;
-    fs.shader_data = CreateShaderInternal(code, size, SDL_GPU_SHADERSTAGE_FRAGMENT);
-
-    SDL_free(code);
-    return fs;
-}
-
-ComputeShaderData ShaderManager::CreateComputeShader(const char* path) {
-    size_t size = 0;
-    Uint8* code = (Uint8*)SDL_LoadFile(path, &size);
-    if (!code) { SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load: %s", path); return {}; }
-
-    ComputeShaderData cs;
-    ReadComputeMetadata(code, size, cs);
-    cs.spv_code = code;
-    cs.spv_size = size;
-    return cs;
-}
-
-
-void ShaderManager::ReadVertexAttributes(const Uint8* shader_code, size_t shader_size, SDL_GPUVertexBufferDescription& vb, std::vector<SDL_GPUVertexAttribute>& attributes)
+void ShaderManager::ReadVertexAttributes(
+    const SDL_ShaderCross_GraphicsShaderMetadata* metadata,
+    SDL_GPUVertexBufferDescription& vb,
+    std::vector<SDL_GPUVertexAttribute>& attributes)
 {
-    SpvReflectShaderModule module;
-    if (spvReflectCreateShaderModule(shader_size, shader_code, &module) != SPV_REFLECT_RESULT_SUCCESS) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SPIRV-Reflect: Failed to parse SPIR-V for vertex attribute reflection.");
+    attributes.clear();
+    if (!metadata || metadata->num_inputs == 0) {
+        SDL_zero(vb);
+        vb.slot = 0;
+        vb.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
+        vb.pitch = 0;
+        vb.instance_step_rate = 0;
         return;
     }
 
-    uint32_t count = 0;
-    spvReflectEnumerateInputVariables(&module, &count, nullptr);
-    std::vector<SpvReflectInterfaceVariable*> vars(count);
-    if (count)
-        spvReflectEnumerateInputVariables(&module, &count, (SpvReflectInterfaceVariable**)vars.data());
-
-    attributes.clear();
-    std::sort(vars.begin(), vars.end(),
-        [](const SpvReflectInterfaceVariable* a, const SpvReflectInterfaceVariable* b) {
+    // Собираем и сортируем по location (как было в старом коде)
+    std::vector<const SDL_ShaderCross_IOVarMetadata*> input_vars;
+    input_vars.reserve(metadata->num_inputs);
+    for (Uint32 i = 0; i < metadata->num_inputs; ++i) {
+        input_vars.push_back(&metadata->inputs[i]);
+    }
+    std::sort(input_vars.begin(), input_vars.end(),
+        [](const SDL_ShaderCross_IOVarMetadata* a, const SDL_ShaderCross_IOVarMetadata* b) {
         return a->location < b->location;
     });
 
     size_t offset = 0;
-    for (uint32_t i = 0; i < count; ++i) {
-        const auto* var = vars[i];
-        if (var->decoration_flags & SPV_REFLECT_DECORATION_BUILT_IN) continue;
-
-        SDL_GPUVertexAttribute attr = {};
+    for (const auto* var : input_vars) {
+        SDL_GPUVertexAttribute attr{};
         attr.buffer_slot = 0;
         attr.location = var->location;
-        switch (var->format) {
-        case SPV_REFLECT_FORMAT_R32G32B32_SFLOAT:
-            attr.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-            attr.offset = safe_u32(offset); offset += 12; break;
-        case SPV_REFLECT_FORMAT_R32G32_SFLOAT:
-            attr.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2;
-            attr.offset = safe_u32(offset); offset += 8; break;
-        case SPV_REFLECT_FORMAT_R32G32B32A32_SFLOAT:
-            attr.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4;
-            attr.offset = safe_u32(offset); offset += 16; break;
-        default: break;
+
+        // Маппинг типов из SDL_ShaderCross_IOVarType → SDL_GPUVertexElementFormat
+        // (расширенный по сравнению со старым кодом, поддерживает UINT/INT)
+        SDL_GPUVertexElementFormat format = SDL_GPU_VERTEXELEMENTFORMAT_INVALID;
+        uint32_t elem_size = 0;
+
+        switch (var->vector_type) {
+        case SDL_SHADERCROSS_IOVAR_TYPE_FLOAT32:
+            switch (var->vector_size) {
+            case 1: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;  elem_size = 4; break;
+            case 2: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2; elem_size = 8; break;
+            case 3: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; elem_size = 12; break;
+            case 4: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4; elem_size = 16; break;
+            }
+            break;
+        case SDL_SHADERCROSS_IOVAR_TYPE_UINT32:
+            switch (var->vector_size) {
+            case 1: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT;  elem_size = 4; break;
+            case 2: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT2; elem_size = 8; break;
+            case 3: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT3; elem_size = 12; break;
+            case 4: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT4; elem_size = 16; break;
+            }
+            break;
+        case SDL_SHADERCROSS_IOVAR_TYPE_INT32:
+            switch (var->vector_size) {
+            case 1: format = SDL_GPU_VERTEXELEMENTFORMAT_INT;  elem_size = 4; break;
+            case 2: format = SDL_GPU_VERTEXELEMENTFORMAT_INT2; elem_size = 8; break;
+            case 3: format = SDL_GPU_VERTEXELEMENTFORMAT_INT3; elem_size = 12; break;
+            case 4: format = SDL_GPU_VERTEXELEMENTFORMAT_INT4; elem_size = 16; break;
+            }
+            break;
+        default:
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                "Unsupported vertex input type %d (vector_size %u) at location %u",
+                var->vector_type, var->vector_size, var->location);
+            continue;
         }
+
+        if (format == SDL_GPU_VERTEXELEMENTFORMAT_INVALID) continue;
+
+        attr.format = format;
+        attr.offset = safe_u32(offset);
+        offset += elem_size;
         attributes.push_back(attr);
     }
-    spvReflectDestroyShaderModule(&module);
 
     SDL_zero(vb);
     vb.slot = 0;
     vb.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-    vb.pitch = (Uint32)offset;
+    vb.pitch = safe_u32(offset);
     vb.instance_step_rate = 0;
 }
 
-void ShaderManager::ReadComputeMetadata(const Uint8* code, size_t size, ComputeShaderData& out) {
-    SpvReflectShaderModule module;
-    if (spvReflectCreateShaderModule(size, code, &module) != SPV_REFLECT_RESULT_SUCCESS) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SPIRV-Reflect: failed to parse compute shader");
-        return;
+Uint8* ShaderManager::LoadOrCompileSPIRV(const char* hlsl_path,
+    SDL_ShaderCross_ShaderStage stage,
+    size_t& out_size)
+{
+    size_t src_size = 0;
+    char* src = (char*)SDL_LoadFile(hlsl_path, &src_size);
+    if (!src) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load HLSL: %s", hlsl_path);
+        return nullptr;
     }
 
-    if (module.entry_point_count > 0) {
-        out.threadcount_x = module.entry_points[0].local_size.x;
-        out.threadcount_y = module.entry_points[0].local_size.y;
-        out.threadcount_z = module.entry_points[0].local_size.z;
+    // === Улучшенный хэш: учитываем не только текст, но и целевую платформу/GPU ===
+    const SDL_GPUShaderFormat supported = SDL_GetGPUShaderFormats(dev);
+    uint64_t hash = HashBytes((const uint8_t*)src, src_size);
+
+    // Добавляем информацию о GPU-формате в хэш (DXIL / MSL / SPIRV)
+    // Это гарантирует, что при смене видеокарты/ОС кэш пересоберётся
+    hash ^= (uint64_t)supported;
+    hash *= 1099511628211ULL;   // чтобы изменение формата сильно меняло хэш
+
+    std::string cache_path = BuildCachePath(hlsl_path, hash);
+
+    // Пробуем кэш
+    Uint8* spv = (Uint8*)SDL_LoadFile(cache_path.c_str(), &out_size);
+    if (spv) {
+        SDL_Log("[Shader] Cache hit: %s", cache_path.c_str());
+        SDL_free(src);
+        return spv;
     }
 
-    uint32_t count = 0;
-    spvReflectEnumerateDescriptorBindings(&module, &count, nullptr);
-    std::vector<SpvReflectDescriptorBinding*> bindings(count);
-    if (count)
-        spvReflectEnumerateDescriptorBindings(&module, &count, bindings.data());
+    // Компилируем HLSL → SPIR-V
+    SDL_ShaderCross_HLSL_Info hlsl_info{};
+    hlsl_info.source = src;
+    hlsl_info.entrypoint = "main";
+    hlsl_info.shader_stage = stage;
+    hlsl_info.include_dir = nullptr;
+    hlsl_info.defines = nullptr;
+    hlsl_info.props = 0;
 
-    for (auto* b : bindings) {
-        switch (b->descriptor_type) {
-        case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
-        case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            ++out.num_samplers; break;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            ++out.num_readonly_storage_textures; break;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            (b->decoration_flags & SPV_REFLECT_DECORATION_NON_WRITABLE)
-                ? ++out.num_readonly_storage_textures
-                : ++out.num_readwrite_storage_textures;
-            break;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            (b->decoration_flags & SPV_REFLECT_DECORATION_NON_WRITABLE)
-                ? ++out.num_readonly_storage_buffers
-                : ++out.num_readwrite_storage_buffers;
-            break;
-        case SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            ++out.num_uniform_buffers; break;
-        default: break;
-        }
+    size_t compiled_size = 0;
+    void* compiled = SDL_ShaderCross_CompileSPIRVFromHLSL(&hlsl_info, &compiled_size);
+    SDL_free(src);
+
+    if (!compiled) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "ShaderCross compile failed: %s\n%s", hlsl_path, SDL_GetError());
+        return nullptr;
     }
-    spvReflectDestroyShaderModule(&module);
+
+    // Сохраняем в кэш
+    SDL_IOStream* f = SDL_IOFromFile(cache_path.c_str(), "wb");
+    if (f) {
+        SDL_WriteIO(f, compiled, compiled_size);
+        SDL_CloseIO(f);
+        SDL_Log("[Shader] Compiled and cached: %s", cache_path.c_str());
+    }
+
+    out_size = compiled_size;
+    return (Uint8*)compiled;
+}
+
+VertexShaderData ShaderManager::CreateVertexShader(const char* hlsl_path) {
+    size_t spv_size = 0;
+    Uint8* spv_code = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_VERTEX, spv_size);
+    if (!spv_code) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load/compile vertex shader: %s", hlsl_path);
+        return {};
+    }
+
+    VertexShaderData vs{};
+    SDL_ShaderCross_GraphicsShaderMetadata* metadata =
+        SDL_ShaderCross_ReflectGraphicsSPIRV(spv_code, spv_size, 0);
+
+    if (!metadata) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect vertex shader: %s", hlsl_path);
+        SDL_free(spv_code);
+        return {};
+    }
+
+    ReadVertexAttributes(metadata, vs.vb, vs.attributes);
+
+    SDL_ShaderCross_SPIRV_Info spirv_info{};
+    spirv_info.bytecode = spv_code;
+    spirv_info.bytecode_size = spv_size;
+    spirv_info.entrypoint = "main";
+    spirv_info.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_VERTEX;
+    spirv_info.props = 0;
+
+    vs.shader_data.shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(
+        dev, &spirv_info, &metadata->resource_info, 0);
+
+    SDL_free(metadata);
+    SDL_free(spv_code);
+
+    if (!vs.shader_data.shader) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GPU vertex shader: %s", hlsl_path);
+    }
+    return vs;
+}
+
+FragmentShaderData ShaderManager::CreateFragmentShader(const char* hlsl_path) {
+    size_t spv_size = 0;
+    Uint8* spv_code = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT, spv_size);
+    if (!spv_code) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load/compile fragment shader: %s", hlsl_path);
+        return {};
+    }
+
+    FragmentShaderData fs{};
+    SDL_ShaderCross_GraphicsShaderMetadata* metadata =
+        SDL_ShaderCross_ReflectGraphicsSPIRV(spv_code, spv_size, 0);
+
+    if (!metadata) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect fragment shader: %s", hlsl_path);
+        SDL_free(spv_code);
+        return {};
+    }
+
+    // Создаём GPU-шейдер
+    SDL_ShaderCross_SPIRV_Info spirv_info{};
+    spirv_info.bytecode = spv_code;
+    spirv_info.bytecode_size = spv_size;
+    spirv_info.entrypoint = "main";
+    spirv_info.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT;
+    spirv_info.props = 0;
+
+    fs.shader_data.shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(
+        dev, &spirv_info, &metadata->resource_info, 0);
+
+    SDL_free(metadata);
+    SDL_free(spv_code);
+
+    if (!fs.shader_data.shader) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GPU fragment shader: %s", hlsl_path);
+    }
+    return fs;
+}
+
+ComputeShaderData ShaderManager::CreateComputeShader(const char* hlsl_path) {
+    size_t spv_size = 0;
+    Uint8* spv_code = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_COMPUTE, spv_size);
+    if (!spv_code) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load/compile compute shader: %s", hlsl_path);
+        return {};
+    }
+
+    ComputeShaderData cs{};
+    cs.spv_code = spv_code;
+    cs.spv_size = spv_size;
+
+    // Рефлекшн через SDL_ShaderCross (полностью заменяет старую ReadComputeMetadata + SPIRV-Reflect)
+    SDL_ShaderCross_ComputePipelineMetadata* metadata =
+        SDL_ShaderCross_ReflectComputeSPIRV(spv_code, spv_size, 0);
+
+    if (metadata) {
+        cs.threadcount_x = metadata->threadcount_x;
+        cs.threadcount_y = metadata->threadcount_y;
+        cs.threadcount_z = metadata->threadcount_z;
+        cs.num_samplers = metadata->num_samplers;
+        cs.num_readonly_storage_textures = metadata->num_readonly_storage_textures;
+        cs.num_readonly_storage_buffers = metadata->num_readonly_storage_buffers;
+        cs.num_readwrite_storage_textures = metadata->num_readwrite_storage_textures;
+        cs.num_readwrite_storage_buffers = metadata->num_readwrite_storage_buffers;
+        cs.num_uniform_buffers = metadata->num_uniform_buffers;
+        SDL_free(metadata);
+    }
+    else {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect compute shader: %s", hlsl_path);
+    }
+
+    return cs;
 }

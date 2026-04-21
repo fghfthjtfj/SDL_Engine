@@ -57,8 +57,8 @@ SDL_AppResult Game::MainInit()
     TextureHandle* ground = textureManager->CreateTextureFromFile("new_car_ground", atlas, "textures/assets/new_car_ground.png");
     TextureHandle* glass = textureManager->CreateTextureFromFile("new_car_glass", atlas, "textures/assets/new_car_glass.png");
 
-    VertexShaderData vs = shaderManager->CreateVertexShader("../engine/shaders/main_pass.vert.spv");
-    FragmentShaderData fs = shaderManager->CreateFragmentShader("../engine/shaders/main_pass.frag.spv");
+    VertexShaderData vs = shaderManager->CreateVertexShader("../engine/shaders_code/main_pass.vert.hlsl");
+    FragmentShaderData fs = shaderManager->CreateFragmentShader("../engine/shaders_code/main_pass.frag.hlsl");
     ShaderProgramDescription* spd_main = shaderManager->CreateShaderProgramDescription(
         "spd",
         true,   // enable_depth_test
@@ -73,8 +73,8 @@ SDL_AppResult Game::MainInit()
 		{ TextureSlotRole::Albedo, TextureSlotRole::Normal }
     );
 
-    VertexShaderData vs_2 = shaderManager->CreateVertexShader("../engine/shaders/shadow_pass.vert.spv");
-    FragmentShaderData fs_2 = shaderManager->CreateFragmentShader("../engine/shaders/shadow_pass.frag.spv");
+    VertexShaderData vs_2 = shaderManager->CreateVertexShader("../engine/shaders_code/shadow_pass.vert.hlsl");
+    FragmentShaderData fs_2 = shaderManager->CreateFragmentShader("../engine/shaders_code/shadow_pass.frag.hlsl");
     ShaderProgramDescription* spd_shadow = shaderManager->CreateShaderProgramDescription(
         "spd_shadow",
         true,   // enable_depth_test
