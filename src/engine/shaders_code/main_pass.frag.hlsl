@@ -97,7 +97,7 @@ float3 computeNormal(PSInput input)
 
 // ─── Lighting ────────────────────────────────────────────────────────────────
 
-static const float AMBIENT   = 0.85;
+static const float AMBIENT   = 0.75;
 static const float EDGE_SOFT = 0.30;
 
 float computeSpotLight(float3 fragPos, float3 normal, Light light)
@@ -163,9 +163,9 @@ float computeSphereLight(float3 fragPos, float3 normal, Light light)
 
 // ─── Shadows ─────────────────────────────────────────────────────────────────
 
-float computeShadowSpot(PSInput input, int cameraIndex)
+float computeShadowSpot(PSInput input, int cameraOffset)
 {
-    float4 lsp = getLightSpacePos(input, cameraIndex);
+    float4 lsp = getLightSpacePos(input, cameraOffset);
     float3 ndc = lsp.xyz / lsp.w;
     float2 uv  = float2(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
     float  z   = ndc.z;
@@ -177,7 +177,7 @@ float computeShadowSpot(PSInput input, int cameraIndex)
         return 1.0;
 
     return u_shadowMapFlat.SampleCmpLevelZero(u_shadowSampler,
-               float3(uv, float(cameraIndex)), z);
+               float3(uv, float(cameraOffset)), z);
 }
 
 int getCubeFace(float3 dir)
@@ -223,7 +223,7 @@ float4 main(PSInput input) : SV_Target0
     for (uint i = 0; i < lightCount; ++i)
     {
         int   type         = LightBlock[i].light_info.x;
-        int   cameraOffset = LightBlock[i].light_info.y;
+        int   cameraOffset = LightBlock[i].light_info.y; // СЧИТАЕТСЯ ГЛОБАЛЬНО ПО ИСТОЧНИКАМ СВЕТА! Используется в ОБЩЕМ буфере световых камер
         float intensity    = 0.0;
 
         if (type == 0)

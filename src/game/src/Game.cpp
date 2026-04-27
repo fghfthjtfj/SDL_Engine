@@ -60,6 +60,7 @@ SDL_AppResult Game::MainInit()
     VertexShaderData vs = shaderManager->CreateVertexShader("../engine/shaders_code/main_pass.vert.hlsl");
     FragmentShaderData fs = shaderManager->CreateFragmentShader("../engine/shaders_code/main_pass.frag.hlsl");
     ShaderProgramDescription* spd_main = shaderManager->CreateShaderProgramDescription(
+
         "spd",
         true,   // enable_depth_test
         true,   // enable_depth_write
