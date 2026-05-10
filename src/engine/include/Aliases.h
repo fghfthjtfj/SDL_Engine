@@ -10,7 +10,9 @@ using AtlasName = std::string;
 
 using BufferDataName = const char*;
 
-using ModelBatchKey = uint64_t;
-using TextureBatchKey = uint64_t;
-using AtlasBatchKey = uint64_t;
-using ShaderBatchKey = uint64_t;
+namespace BatchKeys {
+	using ModelBatchKey = uint64_t;
+	using TextureBatchKey = uint64_t;
+	using AtlasBatchKey = uint64_t;
+	using ShaderBatchKey = uint64_t;
+};

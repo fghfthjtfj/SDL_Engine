@@ -1,7 +1,7 @@
 #include "PCH.h"
 #include "PipeManager.h"
-#include "RenderCommandData.h"
 #include "ShaderManager.h"
+#include "RenderCommandData.h"
 
 
 PipeManager::PipeManager(SDL_GPUDevice* dev, SDL_Window* win) {
@@ -38,10 +38,10 @@ void PipeManager::CreateComputePipelines(ShaderManager* sm)
         return;
     }
     for (auto& pair : sm->GetComputeShaderPrograms()) {
-        ComputeShaderProgram* sp = pair.second.get();
+        ComputeShaderProgram* sp = pair.get();
 		SDL_GPUComputePipeline* pipe = GetOrCreateComputePipeline(sp);
         if (!pipe) {
-            SDL_Log("Failed to create compute pipeline for shader program: %s", pair.first.c_str());
+            SDL_Log("Failed to create compute pipeline for shader program: %s", sp->debug_name);
 		}
     }
 }
@@ -67,28 +67,40 @@ SDL_GPUGraphicsPipeline* PipeManager::GetOrCreatePipeline(ShaderProgram* sp)
     pci.rasterizer_state.cull_mode = sp->spd->cull_mode;
     pci.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
 
-    // оепемеярх RSPB б ьеидеп!
-    pci.rasterizer_state.enable_depth_bias = sp->spd->associated_render_pass->rsb_params.enable_depth_bias;
-    pci.rasterizer_state.depth_bias_constant_factor = sp->spd->associated_render_pass->rsb_params.depth_bias_constant_factor;
-    pci.rasterizer_state.depth_bias_slope_factor = sp->spd->associated_render_pass->rsb_params.depth_bias_slope_factor;
-    pci.rasterizer_state.depth_bias_clamp = sp->spd->associated_render_pass->rsb_params.depth_bias_clamp;
-
-
+    pci.rasterizer_state.enable_depth_bias = sp->spd->rasterizer_bias.enable_depth_bias;
+    pci.rasterizer_state.depth_bias_constant_factor = sp->spd->rasterizer_bias.depth_bias_constant_factor;
+    pci.rasterizer_state.depth_bias_slope_factor = sp->spd->rasterizer_bias.depth_bias_slope_factor;
+    pci.rasterizer_state.depth_bias_clamp = sp->spd->rasterizer_bias.depth_bias_clamp;
 
     pci.vertex_input_state.num_vertex_buffers = 1;
     pci.vertex_input_state.vertex_buffer_descriptions = &sp->vs.vb;
     pci.vertex_input_state.num_vertex_attributes = safe_u32(sp->vs.attributes.size());
     pci.vertex_input_state.vertex_attributes = sp->vs.attributes.data();
 
-    pci.depth_stencil_state.enable_depth_test = sp->spd->enable_depth_test;
-    pci.depth_stencil_state.enable_depth_write = sp->spd->enable_depth_write;
-    pci.depth_stencil_state.enable_stencil_test = sp->spd->enable_stencil_test;
+    pci.depth_stencil_state.enable_depth_test = sp->spd->depth_test;
+    pci.depth_stencil_state.enable_depth_write = sp->spd->depth_write;
+    pci.depth_stencil_state.enable_stencil_test = sp->spd->stencil_test;
     pci.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
 
 
-    SDL_GPUColorTargetDescription ctd = MakeDefaultColorTarget();
-
-    if (sp->spd->has_color_target) {
+    SDL_GPUColorTargetDescription ctd;
+    if(sp->spd->associated_render_pass->renderPassTexsData.numColorTargets > 0) {
+        SDL_zero(ctd);
+        if (sp->spd->associated_render_pass->renderPassTexsData.color_format != SDL_GPU_TEXTUREFORMAT_INVALID) {
+            ctd.format = sp->spd->associated_render_pass->renderPassTexsData.color_format;
+        }
+        else {
+            ctd = MakeDefaultColorTarget();
+        }
+        ctd.blend_state.enable_blend = sp->spd->color_blend;
+        if (sp->spd->color_blend) {
+            ctd.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+            ctd.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+            ctd.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+            ctd.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE;
+            ctd.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+            ctd.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+        }
         pci.target_info.num_color_targets = 1;
         pci.target_info.color_target_descriptions = &ctd;
     }
@@ -98,7 +110,7 @@ SDL_GPUGraphicsPipeline* PipeManager::GetOrCreatePipeline(ShaderProgram* sp)
     }
 
     pci.target_info.has_depth_stencil_target = true;
-    pci.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+    pci.target_info.depth_stencil_format = sp->spd->associated_render_pass->renderPassTexsData.depth_format;
 
 	SDL_GPUGraphicsPipeline* pipe = nullptr;
     pipe = SDL_CreateGPUGraphicsPipeline(dev, &pci);
@@ -151,6 +163,7 @@ SDL_GPUComputePipeline* PipeManager::GetOrCreateComputePipeline(ComputeShaderPro
         SDL_Log("Failed to create compute pipeline: %s", SDL_GetError());
 
     compute_pipelines.emplace(sp, pipeline);
+    //SDL_free(sp->cs.spv_code);
     return pipeline;
 }
 

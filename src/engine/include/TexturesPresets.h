@@ -11,7 +11,18 @@ enum class TexturePreset {
     Depth_CubemapArray2048_4Cubes,
     Depth_CubemapArray2048_8Cubes,
     Depth_CubemapArray1024_1Cubes,
+	ShadowRG16_FlatArray1024_8Layers,
+	ShadowRG16_FlatArray2048_8Layers,
+    ShadowRG32_FlatArray1024_8Layers,
+	ShadowRG32_FlatArray2048_8Layers,
+    ShadowRGBA32_FlatArray1024_8Layers,
+    ShadowRGBA32_FlatArray2048_8Layers,
     SingleDepth2048,
+    TempShadowRG16_1024,
+    TempShadowRG32_1024,
+	TempShadowRG32_2048,
+    TempShadowRGBA32_1024,
+    TempShadowRGBA32_2048,
     TempDepth2048,
     TempDepth1024,
     Albedo_Atlas4096_3Layer,
@@ -30,7 +41,7 @@ namespace TexturePresets {
         case TexturePreset::Depth_FlatArray2048_1Layers:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
             info.width = 2048;
             info.height = 2048;
             info.layer_count_or_depth = 1;
@@ -40,7 +51,7 @@ namespace TexturePresets {
         case TexturePreset::Depth_FlatArray2048_4Layers:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
             info.width = 2048;
             info.height = 2048;
             info.layer_count_or_depth = 6;
@@ -50,7 +61,7 @@ namespace TexturePresets {
         case TexturePreset::Depth_FlatArray2048_8Layers:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
             info.width = 2048;
             info.height = 2048;
             info.layer_count_or_depth = 8;
@@ -60,7 +71,7 @@ namespace TexturePresets {
         case TexturePreset::Depth_FlatArray2048_16Layers:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
             info.width = 2048;
             info.height = 2048;
             info.layer_count_or_depth = 16;
@@ -70,7 +81,7 @@ namespace TexturePresets {
         case TexturePreset::Depth_FlatArray1024_8Layers:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-            info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
             info.width = 1024;
             info.height = 1024;
             info.layer_count_or_depth = 8;
@@ -117,12 +128,122 @@ namespace TexturePresets {
             info.height = 1024;
             info.layer_count_or_depth = 1 * 6; // 1 кубмапов * 6 граней
             info.num_levels = 1;
-
             break;
+
+		case TexturePreset::ShadowRG16_FlatArray1024_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_R16G16_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+			break;
+
+		case TexturePreset::ShadowRG16_FlatArray2048_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_R16G16_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::ShadowRG32_FlatArray1024_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+            break;
+
+		case TexturePreset::ShadowRG32_FlatArray2048_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET |SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+			break;
+
+        case TexturePreset::ShadowRGBA32_FlatArray1024_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::ShadowRGBA32_FlatArray2048_8Layers:
+            info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 8;
+            info.num_levels = 1;
+            break;
+
         case TexturePreset::SingleDepth2048:
             info.type = SDL_GPU_TEXTURETYPE_2D;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
             info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+		case TexturePreset::TempShadowRG32_2048:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+            info.width = 2048;
+            info.height = 2048;
+            info.layer_count_or_depth = 1;
+			info.num_levels = 1;
+			break;
+
+        case TexturePreset::TempShadowRG16_1024:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_R16G16_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::TempShadowRG32_1024:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::TempShadowRGBA32_1024:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
+            info.width = 1024;
+            info.height = 1024;
+            info.layer_count_or_depth = 1;
+            info.num_levels = 1;
+            break;
+
+        case TexturePreset::TempShadowRGBA32_2048:
+            info.type = SDL_GPU_TEXTURETYPE_2D;
+            info.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE;
             info.width = 2048;
             info.height = 2048;
             info.layer_count_or_depth = 1;
@@ -138,6 +259,7 @@ namespace TexturePresets {
             info.layer_count_or_depth = 1;
             info.num_levels = 1;
             break;
+
         case TexturePreset::TempDepth1024:
             info.type = SDL_GPU_TEXTURETYPE_2D;
             info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
@@ -150,7 +272,7 @@ namespace TexturePresets {
         case TexturePreset::Albedo_Atlas4096_3Layer:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
-            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
             info.width = 4096;
             info.height = 4096;
             info.layer_count_or_depth = 3;
@@ -159,11 +281,11 @@ namespace TexturePresets {
         case TexturePreset::Albedo_Atlas2048_1Layer:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
             info.format = SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
-            info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+            info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
 			info.width = 2048;
 			info.height = 2048;
 			info.layer_count_or_depth = 1;
-            info.num_levels = 2;
+            info.num_levels = 1;
 			break;
         case TexturePreset::NAOPBR_Atlas2048_1Layer:
             info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;

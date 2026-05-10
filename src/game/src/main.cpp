@@ -16,7 +16,7 @@ int main() {
     dev = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV |
         SDL_GPU_SHADERFORMAT_DXIL |
         SDL_GPU_SHADERFORMAT_MSL,
-        false, nullptr);
+        true, nullptr);
     SDL_ClaimWindowForGPUDevice(dev, win);
     SDL_SetGPUAllowedFramesInFlight(dev, BUFFERING_LEVEL); // тройная буферизация
 

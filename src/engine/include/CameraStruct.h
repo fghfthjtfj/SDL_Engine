@@ -55,7 +55,7 @@ private:
     float aspect;
     float nearPlane;
     float farPlane;
-    float moveSpeed = 5.0f;
+    float moveSpeed = 1.0f;
 
     bool firstMouse = true;
     float lastMouseX = 0.0f;

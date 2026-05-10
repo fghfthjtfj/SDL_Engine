@@ -15,6 +15,7 @@ class MaterialManager;
 class PipeManager;
 class ObjectManager;
 
+inline constexpr const char* DEPTH_PASS = "_DefaultDepthRenderPass";
 inline constexpr const char* MAIN_PASS = "_DefaultMainRenderPass";
 inline constexpr const char* SHADOW_PASS = "_DefaultShadowRenderPass";
 inline constexpr const char* CULLING_PREPASS = "_DefaultCullingComputePass";
@@ -22,13 +23,13 @@ inline constexpr const char* CULLING_ZEROS_PREPASS = "_DefaultCullingZerosComput
 inline constexpr const char* CULLING_OFFSET_PREPASS = "_DefaultCullingOffsetComputePass";
 inline constexpr const char* CULLING_OUT_INDIRECT_PREPASS = "_DefaultCullingOutIndirectComputePass";
 inline constexpr const char* CULLING_WRITE_PASS = "_DefaultCullingWritePass";
-
+inline constexpr const char* SHADOW_BLUR_PASS = "_DefaultBlurPass";
 
 class PassManager
 {
 public:
     PassManager();
-	RenderPassStep* CreateRenderPass(const ComputePassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, RenderPassStep&)> render_function, RenderPassTexturesInfo&& rptd, int pass_index, RasterizerStateBiasParams& RSB_Params);
+	RenderPassStep* CreateRenderPass(const ComputePassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, RenderPassStep&)> render_function, RenderPassTexturesInfo&& rptd, int pass_index);
 	ComputePassStep* CreateComputePass(const ComputePassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, ComputePassStep&, uint8_t)> compute_function, int pass_index);
 	ComputePassStep* CreateComputePrepass(const ComputePrepassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, ComputePassStep&, uint8_t)> compute_function, int pass_index);
 
@@ -41,7 +42,7 @@ public:
 	void WaitComputePrepass(SDL_GPUDevice* dev);
 	// Начинает и завершает SDL_GPUComputePass
 	// Starts and end SDL_GPUComputePass
-	void ComputePassStandardBody(SDL_GPUCommandBuffer* cb, ComputePassStep* compute_pass, BufferManager* bm, const void* raw, uint8_t pass_frame);
+	void ComputePassStandardBody(SDL_GPUCommandBuffer* cb, ComputePassStep* compute_pass, BufferManager* bm, const void* push_data_raw, const void* dispatch_data_raw, uint8_t pass_frame);
 
 	void SetRenderFrame(uint8_t frame) { render_frame = frame; }
 	RenderPassStep* GetRenderPassStep(const RenderPassName& name);

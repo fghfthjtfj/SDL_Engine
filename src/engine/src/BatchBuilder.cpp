@@ -9,6 +9,7 @@
 #include "TextureData.h"
 
 
+using namespace BatchKeys;
 
 ModelBatchKey HashModelBatchKey(SubMeshData* submash) {
     if (!submash) {
@@ -339,64 +340,41 @@ void BatchBuilder::BuildComputeBatches(PipeManager* pm, ShaderManager* sm) {
     if (!sm || !sm->IsDirtyComputePipelines()) return;
 
     auto& compute_programs = sm->GetComputeShaderPrograms();
-    for (auto& pair : compute_programs) {
-        ComputeShaderProgram* sp = pair.second.get();
-        SDL_GPUComputePipeline* pipe = pm->GetComputePipeline(sp);
-        if (!pipe) {
-            SDL_Log("Failed to get compute pipeline for shader program: %s", pair.first.c_str());
-            assert(pipe && "Compute pipeline should not be null here!");
-            continue;
-        }
+    for (auto& sp : compute_programs) {
+        SDL_GPUComputePipeline* pipe = pm->GetComputePipeline(sp.get());
+        if (!pipe) { /* лог + assert */ continue; }
 
         ComputePassStep* cmp = sp->associated_compute_pass;
         if (!cmp) continue;
 
-        auto& shader_map = cmp->shader_batches;
-        auto sp_key = HashShaderBatchKey(sp);
-        auto it = shader_map.find(sp_key);
-        if (it == shader_map.end())
-        {
-            ComputeShaderBatchData new_batch{};
-            new_batch.pipeline = pm->GetComputePipeline(sp);
-            new_batch.rw_storage_buffers = sp->rw_storage_buffers;
-            new_batch.ro_storage_buffers = sp->ro_storage_buffers;
-            new_batch.push_func = sp->push_func;
+        ComputeShaderBatchData new_batch{};
+        new_batch.pipeline = pipe;
+        new_batch.rw_storage_buffers = sp->rw_storage_buffers;
+        new_batch.ro_storage_buffers = sp->ro_storage_buffers;
 
-            shader_map[sp_key] = std::move(new_batch);
+        new_batch.rw_storage_textures.reserve(sp->rw_storage_textures.size());
+        for (const auto& d : sp->rw_storage_textures) {
+            new_batch.rw_storage_textures.emplace_back(
+                d.texture_atlas->texture_binding.texture, d.mip_level, d.layer, false);
         }
-    }
-    sm->SetDirtyComputePipelines(false);
-}
-
-void BatchBuilder::BuildComputePrepassBatches(PipeManager* pm, ShaderManager* sm) {
-    if (!sm || !sm->IsDirtyComputePipelines()) return;
-
-    auto& compute_programs = sm->GetComputeShaderPrograms();
-    for (auto& pair : compute_programs) {
-        ComputeShaderProgram* sp = pair.second.get();
-        SDL_GPUComputePipeline* pipe = pm->GetComputePipeline(sp);
-        if (!pipe) {
-            SDL_Log("Failed to get compute pipeline for shader program: %s", pair.first.c_str());
-            assert(pipe && "Compute pipeline should not be null here!");
-            continue;
+        new_batch.ro_storage_textures.reserve(sp->ro_storage_textures.size());
+        for (const auto& a : sp->ro_storage_textures) {
+            new_batch.ro_storage_textures.push_back(a->texture_binding.texture);
         }
-
-        ComputePassStep* cmp = sp->associated_compute_pass;
-        if (!cmp) continue;
-
-        auto& shader_map = cmp->shader_batches;
-        auto sp_key = HashShaderBatchKey(sp);
-        auto it = shader_map.find(sp_key);
-        if (it == shader_map.end())
-        {
-            ComputeShaderBatchData new_batch{};
-            new_batch.pipeline = pm->GetComputePipeline(sp);
-            new_batch.rw_storage_buffers = sp->rw_storage_buffers;
-            new_batch.ro_storage_buffers = sp->ro_storage_buffers;
-            new_batch.push_func = sp->push_func;
-
-            shader_map[sp_key] = std::move(new_batch);
+        new_batch.texture_binding.reserve(sp->texture_samplers.size());
+        for (const auto& a : sp->texture_samplers) {
+            new_batch.texture_binding.push_back(a->texture_binding);
         }
+        new_batch.push_func = sp->push_func;
+        new_batch.dispatch_func = sp->dispatch_func;
+
+        new_batch.threadcount_x = sp->cs.threadcount_x;
+        new_batch.threadcount_y = sp->cs.threadcount_y;
+        new_batch.threadcount_z = sp->cs.threadcount_z;
+
+        new_batch.debug_name = sp->debug_name;
+
+        cmp->shader_batches.push_back(std::move(new_batch));
     }
     sm->SetDirtyComputePipelines(false);
 }

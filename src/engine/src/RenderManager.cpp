@@ -8,7 +8,7 @@
 
 PassManager::PassManager() {}
 
-RenderPassStep* PassManager::CreateRenderPass(const ComputePassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, RenderPassStep&)> render_function, RenderPassTexturesInfo&& rptd, int pass_index, RasterizerStateBiasParams& RSB_Params)
+RenderPassStep* PassManager::CreateRenderPass(const ComputePassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, RenderPassStep&)> render_function, RenderPassTexturesInfo&& rptd, int pass_index)
 {
 	if (pass_index == -1) {
 		SDL_Log("PassManager::CreateRenderPass: Invalid RenderPassStep order index.");
@@ -19,7 +19,6 @@ RenderPassStep* PassManager::CreateRenderPass(const ComputePassName& name, std::
 	data->renderPassTexsData = std::move(rptd);
 	data->render_function = render_function;
 	data->pass_index = pass_index;
-	data->rsb_params = RSB_Params;
 
 	RenderPassStep* ptr = data.get();
 	render_steps[name] = std::move(data);
@@ -115,16 +114,16 @@ void PassManager::ExecutePrepassesSteps(SDL_GPUCommandBuffer* cb, uint8_t pass_f
 void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass_step, BufferManager* bm, uint32_t additional_offset)
 {
 	SDL_GPURenderPass* rp = nullptr;
-		rp = SDL_BeginGPURenderPass(cb,
-			&render_pass_step->renderPassTexsData.colorTargetInfo,
-			render_pass_step->renderPassTexsData.numColorTargets,
-			&render_pass_step->renderPassTexsData.depthTargetInfo);
-		if (!rp) {
-			SDL_Log("PassManager::ExecutePassesSteps: Failed to begin render pass!");
-			return;
-		}
-		ExecuteRenderBatches(cb, rp, *render_pass_step, bm, additional_offset);
-		SDL_EndGPURenderPass(rp);
+	rp = SDL_BeginGPURenderPass(cb,
+		&render_pass_step->renderPassTexsData.colorTargetInfo,
+		render_pass_step->renderPassTexsData.numColorTargets,
+		&render_pass_step->renderPassTexsData.depthTargetInfo);
+	if (!rp) {
+		SDL_Log("PassManager::ExecutePassesSteps: Failed to begin render pass!");
+		return;
+	}
+	ExecuteRenderBatches(cb, rp, *render_pass_step, bm, additional_offset);
+	SDL_EndGPURenderPass(rp);
 	
 }
 
@@ -133,23 +132,51 @@ void PassManager::WaitComputePrepass(SDL_GPUDevice* dev)
 	SDL_WaitForGPUIdle(dev);
 }
 
-void PassManager::ComputePassStandardBody(SDL_GPUCommandBuffer* cb, ComputePassStep* compute_step, BufferManager* bm, const void* raw, uint8_t pass_frame)
+void PassManager::ComputePassStandardBody(SDL_GPUCommandBuffer* cb, ComputePassStep* compute_step,
+	BufferManager* bm, const void* push_data_raw, const void* dispatch_data_raw, uint8_t pass_frame)
 {
-	for (auto& [_, shader_batch] : compute_step->shader_batches) {
-		if (shader_batch.push_func) {
-			PushConstantBinder binder{ cb };
-			shader_batch.push_func(binder, raw);
+	for (const auto& shader_batch : compute_step->shader_batches) {
+		glm::uvec3 elements{ 1, 1, 1 };
+		if (shader_batch.dispatch_func) {
+			DispatchSizeBinder dispatch_binder{};
+			shader_batch.dispatch_func(dispatch_binder, dispatch_data_raw);
+			elements = dispatch_binder.element_count;
 		}
 
-		SDL_GPUComputePass* cmp = nullptr;
-		std::vector<SDL_GPUStorageBufferReadWriteBinding> storage_buffer_bindings = bm->BuildBindGPUComputeRWBuffers(shader_batch.rw_storage_buffers, pass_frame);
+		if (elements.x == 0 || elements.y == 0 || elements.z == 0) continue;
 
-		cmp = SDL_BeginGPUComputePass(cb, nullptr, 0, storage_buffer_bindings.data(), safe_u32(storage_buffer_bindings.size()));
+		if (shader_batch.push_func) {
+			PushConstantBinder binder{ cb };
+			shader_batch.push_func(binder, push_data_raw);
+		}
+
+		std::vector<SDL_GPUStorageBufferReadWriteBinding> storage_buffer_bindings =
+			bm->BuildBindGPUComputeRWBuffers(shader_batch.rw_storage_buffers, pass_frame);
+
+		SDL_GPUComputePass* cmp = SDL_BeginGPUComputePass(cb,
+			shader_batch.rw_storage_textures.data(), safe_u32(shader_batch.rw_storage_textures.size()),
+			storage_buffer_bindings.data(), safe_u32(storage_buffer_bindings.size()));
+
 		SDL_BindGPUComputePipeline(cmp, shader_batch.pipeline);
-		bm->BindGPUComputeRO_Buffers(cmp, 0, shader_batch.ro_storage_buffers, pass_frame);
-		SDL_DispatchGPUCompute(cmp, 1, 1, 1); // 256*64 = 16384 треда, гарантированно покрывает
+		if (!shader_batch.texture_binding.empty()) {
+			SDL_BindGPUComputeSamplers(cmp, 0,
+				shader_batch.texture_binding.data(), safe_u32(shader_batch.texture_binding.size()));
+		}
+		if (!shader_batch.ro_storage_textures.empty()) {
+			SDL_BindGPUComputeStorageTextures(cmp, 0,
+				shader_batch.ro_storage_textures.data(), safe_u32(shader_batch.ro_storage_textures.size()));
+		}
+		if (!shader_batch.ro_storage_buffers.empty()) {
+			bm->BindGPUComputeRO_Buffers(cmp, 0, shader_batch.ro_storage_buffers, pass_frame);
+		}
+
+		const uint32_t gx = (elements.x + shader_batch.threadcount_x - 1) / shader_batch.threadcount_x;
+		const uint32_t gy = (elements.y + shader_batch.threadcount_y - 1) / shader_batch.threadcount_y;
+		const uint32_t gz = (elements.z + shader_batch.threadcount_z - 1) / shader_batch.threadcount_z;
+		SDL_DispatchGPUCompute(cmp, gx, gy, gz);
+
 		SDL_EndGPUComputePass(cmp);
-	};
+	}
 }
 
 RenderPassStep* PassManager::GetRenderPassStep(const RenderPassName& name)

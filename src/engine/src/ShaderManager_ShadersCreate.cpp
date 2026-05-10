@@ -21,7 +21,6 @@ std::string ShaderManager::BuildCachePath(const char* source_path, uint64_t hash
     char hash_str[17];
     SDL_snprintf(hash_str, sizeof(hash_str), "%016llx", (unsigned long long)hash);
 
-    // Всегда используем / — SDL и Windows это понимают
     return m_cacheBasePath + "/" + filename + "." + hash_str + ".spv";
 }
 
@@ -40,7 +39,6 @@ void ShaderManager::ReadVertexAttributes(
         return;
     }
 
-    // Собираем и сортируем по location (как было в старом коде)
     std::vector<const SDL_ShaderCross_IOVarMetadata*> input_vars;
     input_vars.reserve(metadata->num_inputs);
     for (Uint32 i = 0; i < metadata->num_inputs; ++i) {
@@ -57,8 +55,6 @@ void ShaderManager::ReadVertexAttributes(
         attr.buffer_slot = 0;
         attr.location = var->location;
 
-        // Маппинг типов из SDL_ShaderCross_IOVarType → SDL_GPUVertexElementFormat
-        // (расширенный по сравнению со старым кодом, поддерживает UINT/INT)
         SDL_GPUVertexElementFormat format = SDL_GPU_VERTEXELEMENTFORMAT_INVALID;
         uint32_t elem_size = 0;
 
@@ -144,7 +140,7 @@ Uint8* ShaderManager::LoadOrCompileSPIRV(const char* hlsl_path,
     hlsl_info.source = src;
     hlsl_info.entrypoint = "main";
     hlsl_info.shader_stage = stage;
-    hlsl_info.include_dir = nullptr;
+    hlsl_info.include_dir = "../engine/shaders_code";
     hlsl_info.defines = nullptr;
     hlsl_info.props = 0;
 
@@ -227,7 +223,6 @@ FragmentShaderData ShaderManager::CreateFragmentShader(const char* hlsl_path) {
         return {};
     }
 
-    // Создаём GPU-шейдер
     SDL_ShaderCross_SPIRV_Info spirv_info{};
     spirv_info.bytecode = spv_code;
     spirv_info.bytecode_size = spv_size;
@@ -259,7 +254,6 @@ ComputeShaderData ShaderManager::CreateComputeShader(const char* hlsl_path) {
     cs.spv_code = spv_code;
     cs.spv_size = spv_size;
 
-    // Рефлекшн через SDL_ShaderCross (полностью заменяет старую ReadComputeMetadata + SPIRV-Reflect)
     SDL_ShaderCross_ComputePipelineMetadata* metadata =
         SDL_ShaderCross_ReflectComputeSPIRV(spv_code, spv_size, 0);
 

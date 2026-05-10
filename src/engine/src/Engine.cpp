@@ -256,7 +256,7 @@ void Engine::PrepareFunc(uint8_t slot)
 
 	batch_builder->BuildRenderBatches(pipe_manager, pass_manager, object_manager, object_manager->GetActiveScene());
 	batch_builder->BuildComputeBatches(pipe_manager, shader_manager);
-	batch_builder->BuildComputePrepassBatches(pipe_manager, shader_manager);
+	//batch_builder->BuildComputePrepassBatches(pipe_manager, shader_manager);
 
 	PrepareFuncPrepassUndepended(slot);
 	//PrepareFuncPrepassDepended(slot);
@@ -640,15 +640,18 @@ void Engine::InitDefaultBufferUpdaters()
 
 void Engine::InitPasses()
 {
-	using namespace DefaultRenderPassSet;
-	SetDefaultCullingComputeZerosPass(pass_manager, buffer_manager);
-	SetDefaultCullingComputeCountPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
-	SetDefaultCullingOutIndirectPass(pass_manager, buffer_manager);
+	using namespace DefaultRenderPassNamespace;
+	//SetDefaultCullingComputeZerosPass(pass_manager, buffer_manager);
+	//SetDefaultCullingComputeCountPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
+	//SetDefaultCullingOutIndirectPass(pass_manager, buffer_manager);
 
-	SetDefaultShadowRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
+	SetDefaultShadowPCFRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
+	//SetDefaultShadowVSMRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
+	SetDefaultShadowBlurPass(pass_manager, buffer_manager); // ДЛЯ VSM
 	SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager);
-	SetDefaultCullingOffstPass(pass_manager, buffer_manager);
-	SetDefaultCullingOutTransformPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
+
+	//SetDefaultCullingOffstPass(pass_manager, buffer_manager);
+	//SetDefaultCullingOutTransformPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
 }
 
 

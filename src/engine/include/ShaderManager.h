@@ -5,7 +5,6 @@
 #include "SDL3/SDL_gpu.h"
 #include "Aliases.h"
 #include <memory>
-#include "SDL3_shadercross/SDL_shadercross.h"
 
 
 class BufferManager;
@@ -15,9 +14,9 @@ class ShaderManager
 {
 public:
 	ShaderManager(SDL_GPUDevice* device);
+	ShaderProgramDescription* CreateShaderProgramDescription(const std::string& name);
 	FragmentShaderData CreateFragmentShader(const char* path);
 	VertexShaderData CreateVertexShader(const char* path);
-	ShaderProgramDescription* CreateShaderProgramDescription(const std::string& name, bool enable_depth_test, bool enable_depth_write, bool enable_stencil_test, bool has_color_target, RenderPassStep* rp);
 	
 	ShaderProgram* CreateShaderProgram(const std::string& name, ShaderProgramDescription* spd, BufferManager* bm,
 		VertexShaderData vs, std::initializer_list<BufferDataName> vertex_shader_buffers,
@@ -27,11 +26,13 @@ public:
 	ComputeShaderData CreateComputeShader(const char* path);
 	// Порядок создание ComputeShaderProgram не определяет порядок их выполнения в проходе!
 	// The order in which ComputeShaderPrograms are created does not determine the order in which they are executed in a pass!
-	ComputeShaderProgram* CreateComputeShaderProgram(const std::string& name, BufferManager* bm,
+	ComputeShaderProgram* CreateComputeShaderProgram(const std::string& name,
 		ComputeShaderData cs, 
-		std::initializer_list<BufferDataName> rw_storage_buffers,
-		std::initializer_list<BufferDataName> ro_storage_buffers,
-
+		std::initializer_list<BufferData*> rw_storage_buffers,
+		std::initializer_list<BufferData*> ro_storage_buffers,
+		std::initializer_list<ComputeShaderProgram::ComputeRWTextureBinding> rw_storage_textures,
+		std::initializer_list<TextureAtlas*> ro_storage_textures,
+		std::initializer_list<TextureAtlas*> texture_samplers,
 		ComputePassStep* associated_compute_pass);
 
 	ShaderProgramDescription* GetShaderProgramDescription(const std::string& name);
@@ -40,7 +41,7 @@ public:
 	ComputeShaderProgram* GetComputeShaderProgram(const std::string& name);
 
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgram>>& GetShaderPrograms() { return shader_programs; }
-	std::unordered_map<std::string, std::unique_ptr<ComputeShaderProgram>>& GetComputeShaderPrograms() { return compute_shader_programs; }
+	std::vector<std::unique_ptr<ComputeShaderProgram>>& GetComputeShaderPrograms() { return compute_shader_programs; };
 
 	bool IsDirtyGraphicsPipelines() const { return dirty_graphics_pipelines; }
 	void SetDirtyGraphicsPipelines(bool dirty) { dirty_graphics_pipelines = dirty; }
@@ -59,7 +60,9 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgramDescription>> shader_program_descriptions;
 	std::unordered_map<std::string, std::unique_ptr<ShaderProgram>> shader_programs;
 	
-	std::unordered_map<std::string, std::unique_ptr<ComputeShaderProgram>> compute_shader_programs;
+	std::vector<std::unique_ptr<ComputeShaderProgram>> compute_shader_programs;
+	std::unordered_map<std::string, ComputeShaderProgram*>  compute_shader_programs_by_name;
+
 	SDL_GPUDevice* dev;
 
 	bool dirty_graphics_pipelines = true;

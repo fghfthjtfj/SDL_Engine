@@ -148,7 +148,7 @@ inline void StoreSpotLightCamera(BufferManager* bm, UploadTask* task, Positions&
     glm::mat4 view = glm::lookAt(position, position + dir, up);
 
     float fov = 2.0f * std::atan(light.source_angle);
-    glm::mat4 proj = glm::perspective(
+    glm::mat4 proj = glm::perspectiveZO(
         fov, 1.0f, 0.3f, 100.0f);
 
     LightCamera lc{};
@@ -176,8 +176,8 @@ static const glm::vec3 cubeUps[6] = {
 
 inline void StoreSphereLightCameras(BufferManager* bm, UploadTask* task, Positions& P, size_t i) {
 	glm::vec3 position = glm::vec3(P.w[i], P.d[i], P.h[i]);
-    glm::mat4 proj = glm::perspective(
-		glm::radians(90.0f), 1.0f, 0.3f, 100.0f);
+    glm::mat4 proj = glm::perspectiveZO(
+		glm::radians(90.0f), 1.0f, 1.3f, 50.0f);
     for (int face = 0; face < 6; ++face)
     {
         glm::mat4 view = glm::lookAt(

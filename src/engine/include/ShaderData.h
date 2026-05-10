@@ -7,6 +7,7 @@
 struct BufferData;
 struct RenderPassStep;
 struct ComputePassStep;
+struct TextureAtlas;
 
 namespace ShaderBase {
 
@@ -26,6 +27,14 @@ struct PushConstantBinder {
     template<typename T>
     void Push(Uint32 slot, const T& data) const {
         SDL_PushGPUComputeUniformData(cb, slot, &data, sizeof(T));
+    }
+};
+
+struct DispatchSizeBinder {
+    glm::uvec3 element_count{ 0, 0, 0 };
+
+    void Dispatch(uint32_t x, uint32_t y = 1, uint32_t z = 1) {
+        element_count = { x, y, z };
     }
 };
 
@@ -53,15 +62,46 @@ struct ComputeShaderData {
     Uint32 num_uniform_buffers = 0;
 };
 
+struct RasterizerStateBiasParams {
+    float depth_bias_constant_factor = 0.0f;
+    float depth_bias_slope_factor = 0.0f;
+    float depth_bias_clamp = 0.0f;
+    bool enable_depth_bias = false;
+};
+
 struct ShaderProgramDescription
 {
-    SDL_GPUCullMode cull_mode = SDL_GPU_CULLMODE_NONE;
-    SDL_GPUTextureFormat depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
+    // --- Внутреннее состояние, юзер обычно сюда не лезет ---
     RenderPassStep* associated_render_pass = nullptr;
-    bool enable_depth_test = true;
-    bool enable_depth_write = true;
-    bool enable_stencil_test = false;
-    bool has_color_target = true;
+    SDL_GPUCullMode           cull_mode = SDL_GPU_CULLMODE_NONE;
+    RasterizerStateBiasParams rasterizer_bias;
+    bool                      depth_test = true;
+    bool                      depth_write = true;
+    bool                      stencil_test = false;
+    bool                      color_blend = false;
+
+    // === Привязка к рендер-пассу ===
+    ShaderProgramDescription* UsedInRenderPass(RenderPassStep* p) { associated_render_pass = p; return this; }
+
+    // === Пресеты поведения (описывают РОЛЬ шейдера) ===
+    // Каждый пресет настраивает сразу несколько полей под типовой сценарий.
+    ShaderProgramDescription* BehavesAsShadowCaster();
+    ShaderProgramDescription* BehavesAsOpaqueGeometry();
+    ShaderProgramDescription* BehavesAsTransparentGeometry();
+    ShaderProgramDescription* BehavesAsDepthPrepass();
+    ShaderProgramDescription* BehavesAsFullscreenEffect();   // post-process, sky и т.п.
+    ShaderProgramDescription* BehavesAsUIOverlay();
+
+    // === Точечные уточнения, если пресет почти подходит ===
+    ShaderProgramDescription* WithBlending() { color_blend = true;  return this; }
+    ShaderProgramDescription* WithoutBlending() { color_blend = false; return this; }
+    ShaderProgramDescription* IgnoresDepth() { depth_test = false; depth_write = false; return this; }
+    ShaderProgramDescription* ReadsDepthOnly() { depth_test = true;  depth_write = false; return this; }
+    ShaderProgramDescription* WritesDepth() { depth_test = true;  depth_write = true;  return this; }
+    ShaderProgramDescription* CullsBackFaces() { cull_mode = SDL_GPU_CULLMODE_BACK;  return this; }
+    ShaderProgramDescription* CullsFrontFaces() { cull_mode = SDL_GPU_CULLMODE_FRONT; return this; }
+    ShaderProgramDescription* DoesNotCull() { cull_mode = SDL_GPU_CULLMODE_NONE;  return this; }
+    ShaderProgramDescription* WithDepthBias(RasterizerStateBiasParams b) { rasterizer_bias = b; return this; }
 };
 
 enum class TextureSlotRole {
@@ -82,17 +122,37 @@ struct ShaderProgram {
 	ShaderProgramDescription* spd;
 };
 
+
 struct ComputeShaderProgram {
+    struct ComputeRWTextureBinding {
+        TextureAtlas* texture_atlas = nullptr;
+        Uint32 mip_level = 0;
+        Uint32 layer = 0;
+    };
     ComputeShaderData cs;
     std::vector<BufferData*> rw_storage_buffers;
-    std::vector<BufferData*> ro_storage_buffers; 
-    ComputePassStep* associated_compute_pass = nullptr;
-    std::function<void(const PushConstantBinder&, const void*)> push_func = nullptr;
+    std::vector<BufferData*> ro_storage_buffers;
+    std::vector<ComputeRWTextureBinding> rw_storage_textures;
+    std::vector<TextureAtlas*> ro_storage_textures;
+    std::vector<TextureAtlas*> texture_samplers;
+    std::string debug_name;
 
+    std::function<void(const PushConstantBinder&, const void*)> push_func = nullptr;
     template<typename T, typename Fn>
     void BindPushConstants(Fn&& fn) {
         push_func = [fn = std::forward<Fn>(fn)](const PushConstantBinder& binder, const void* raw) {
             fn(binder, *static_cast<const T*>(raw));
         };
     }
+
+    std::function<void(DispatchSizeBinder&, const void*)> dispatch_func = nullptr;
+    template<typename T, typename Fn>
+    void BindDispatch(Fn&& fn) {
+        dispatch_func = [fn = std::forward<Fn>(fn)](DispatchSizeBinder& binder, const void* raw) {
+            fn(binder, *static_cast<const T*>(raw));
+        };
+    }
+
+    ComputePassStep* associated_compute_pass = nullptr;
+    BufferData* indirect_buffer = nullptr;
 };

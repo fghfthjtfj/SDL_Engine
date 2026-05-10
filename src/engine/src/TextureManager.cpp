@@ -7,6 +7,7 @@
 TextureManager::TextureManager(SDL_GPUDevice* device): ResourceManager(device){
     CreateSampler(DEFAULT_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::DEFAULT_SAMPLER));
     CreateSampler(DEFAULT_SHADOW_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::SHADOW_SAMPLER));
+	CreateSampler(VSM_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::VSM_SAMPLER));
 }
 
 TextureAtlas* TextureManager::CreateTextureAtlas(const std::string& name, SDL_GPUTextureCreateInfo tci, SDL_GPUSampler* sampler)
@@ -16,23 +17,24 @@ TextureAtlas* TextureManager::CreateTextureAtlas(const std::string& name, SDL_GP
         SDL_Log("Texture atlas '%s' already exists, returning existing atlas.", name.c_str());
         return it->second.get();
 	}
-	auto texture_binding = std::make_unique<TextureAtlas>();
+	auto atlas = std::make_unique<TextureAtlas>();
 
 	SDL_GPUTexture* tex = CreateGPU_Texture(tci);
     if (!tex) {
         SDL_Log("Failed to create GPU texture for atlas '%s': %s", name.c_str(), SDL_GetError());
         return nullptr;
 	}
-	texture_binding->texture_binding.texture = tex;
-	texture_binding->texture_binding.sampler = sampler;
-	texture_binding->width = tci.width;
-	texture_binding->height = tci.height;
-	texture_binding->layers = tci.layer_count_or_depth;
-	texture_binding->padding = 3;
-	texture_binding->mip_levels = tci.num_levels;
+    atlas->texture_binding.texture = tex;
+    atlas->texture_binding.sampler = sampler;
+    atlas->width = tci.width;
+    atlas->height = tci.height;
+    atlas->layers = tci.layer_count_or_depth;
+    atlas->padding = 3;
+    atlas->mip_levels = tci.num_levels;
+    atlas->format = tci.format;
 
-	TextureAtlas* ptr = texture_binding.get();
-	atlases_data[name] = std::move(texture_binding);
+	TextureAtlas* ptr = atlas.get();
+	atlases_data[name] = std::move(atlas);
 	return ptr;
 }
 
@@ -47,17 +49,17 @@ TextureAtlas* TextureManager::CreateTextureAtlas(const std::string& name, Textur
         SDL_Log("Texture atlas '%s' already exists, returning existing atlas.", name.c_str());
         return it->second.get();
     }
-    auto texture_binding = std::make_unique<TextureAtlas>();
-    texture_binding->texture_binding.texture = existing_atlas->texture_binding.texture;
-    texture_binding->texture_binding.sampler = sampler;
-    texture_binding->width = existing_atlas->width;
-    texture_binding->height = existing_atlas->height;
-    texture_binding->layers = existing_atlas->layers;
-    texture_binding->padding = existing_atlas->padding;
-    texture_binding->mip_levels = existing_atlas->mip_levels;
+    auto atlas = std::make_unique<TextureAtlas>();
+    atlas->texture_binding.texture = existing_atlas->texture_binding.texture;
+    atlas->texture_binding.sampler = sampler;
+    atlas->width = existing_atlas->width;
+    atlas->height = existing_atlas->height;
+    atlas->layers = existing_atlas->layers;
+    atlas->padding = existing_atlas->padding;
+    atlas->mip_levels = existing_atlas->mip_levels;
 
-    TextureAtlas* ptr = texture_binding.get();
-    atlases_data[name] = std::move(texture_binding);
+    TextureAtlas* ptr = atlas.get();
+    atlases_data[name] = std::move(atlas);
 	return ptr;
 }
 
@@ -251,8 +253,9 @@ void TextureManager::GenerateMipmaps(SDL_GPUCommandBuffer* cb)
     std::unordered_set<SDL_GPUTexture*> seen;
     for (auto& task : upload_tasks) {
         SDL_GPUTexture* tex = task.target_handle->atlas->texture_binding.texture;
-        if (seen.insert(tex).second)
+        if (seen.insert(tex).second and task.target_handle->atlas->mip_levels > 1){
             SDL_GenerateMipmapsForGPUTexture(cb, tex);
+        }
     }
     upload_tasks.clear();
 }

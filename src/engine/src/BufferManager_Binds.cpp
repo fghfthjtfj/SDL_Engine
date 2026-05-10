@@ -153,7 +153,7 @@ std::vector<SDL_GPUStorageBufferReadWriteBinding> BufferManager::BuildBindGPUCom
         SDL_GPUBuffer* buf = _GetGPUBufferForFrame(data, render_frame);
         if (buf) {
             //SDL_Log("Compute RW buffer ptr: %p", (void*)buf);
-            buffers.push_back({ buf, false });
+            buffers.emplace_back(buf, false);
         }
         else {
             SDL_Log("Null or invalid buffer_data in BindGPUComputeStorageBuffers");

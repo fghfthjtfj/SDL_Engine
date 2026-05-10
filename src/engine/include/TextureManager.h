@@ -15,6 +15,7 @@ struct UploadTaskTexture {
 
 inline constexpr const char* DEFAULT_SAMPLER = "_DefaultSampler";
 inline constexpr const char* DEFAULT_SHADOW_SAMPLER = "_DefaultShadowSampler";
+inline constexpr const char* VSM_SAMPLER = "_VsmSampler";
 
 
 class TextureManager:public ResourceManager
@@ -24,7 +25,8 @@ public:
 
 	TextureAtlas* CreateTextureAtlas(const std::string& name, SDL_GPUTextureCreateInfo tci, SDL_GPUSampler* sampler);
 	// Создание TextureAtlas из уже существующим TextureAtlas
-// Create TextureAtlas from an already existing TextureAtlas
+	// Create TextureAtlas from an already existing TextureAtlas
+	// Используется для создания атласа с другим семплером. НЕ создаёт новую GPU текстуру, использует указатель на текстуру в existing_atlas
 	TextureAtlas* CreateTextureAtlas(const std::string& name, TextureAtlas* existing_atlas, SDL_GPUSampler* sampler);
 	// Создание TextureData из файла
 	// Create TextureData from a file

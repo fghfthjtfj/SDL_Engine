@@ -1,11 +1,7 @@
 ﻿#include "PCH.h"
 #include "Game.h"
 #include "TexturesPresets.h"
-
-//std::vector<PosUV> vertices_cube = MakeCubeVertices();
-//std::vector<PosUVNormal> vertices_cube_norm = MakeCubeVerticesNorm();
-//std::vector<PosUV> vertices_sphere = MakeSphereVertices();
-//std::vector<Uint16> IndecesSphere = MakeSphereIndices();
+#include "DefaultShaderSet.h"
 
 Game::Game(Engine* engine)
 {
@@ -57,58 +53,29 @@ SDL_AppResult Game::MainInit()
     TextureHandle* ground = textureManager->CreateTextureFromFile("new_car_ground", atlas, "textures/assets/new_car_ground.png");
     TextureHandle* glass = textureManager->CreateTextureFromFile("new_car_glass", atlas, "textures/assets/new_car_glass.png");
 
-    VertexShaderData vs = shaderManager->CreateVertexShader("../engine/shaders_code/main_pass.vert.hlsl");
-    FragmentShaderData fs = shaderManager->CreateFragmentShader("../engine/shaders_code/main_pass.frag.hlsl");
-    ShaderProgramDescription* spd_main = shaderManager->CreateShaderProgramDescription(
+    using namespace DefaultShaderProgramSet;
+    SetMainShaderProgram(bufferManager, shaderManager, passManager);
+    SetDefaultShadowShaderProgram(bufferManager, shaderManager, passManager);
+    //SetShadowBlurPrograms(bufferManager, shaderManager, passManager, textureManager, objectManager, light_data_module);
 
-        "spd",
-        true,   // enable_depth_test
-        true,   // enable_depth_write
-        false,  // enable_stencil_test
-        true,   // has_color_target
-        passManager->GetRenderPassStep(MAIN_PASS) // associated_render_pass
-	);
-    ShaderProgram* sp = shaderManager->CreateShaderProgram("sp", spd_main, bufferManager, 
-        vs, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
-        fs, { DEFAULT_LIGHT_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
-		{ TextureSlotRole::Albedo, TextureSlotRole::Normal }
-    );
-
-    VertexShaderData vs_2 = shaderManager->CreateVertexShader("../engine/shaders_code/shadow_pass.vert.hlsl");
-    FragmentShaderData fs_2 = shaderManager->CreateFragmentShader("../engine/shaders_code/shadow_pass.frag.hlsl");
-    ShaderProgramDescription* spd_shadow = shaderManager->CreateShaderProgramDescription(
-        "spd_shadow",
-        true,   // enable_depth_test
-        true,   // enable_depth_write
-        false,  // enable_stencil_test
-        false,  // has_color_target
-        passManager->GetRenderPassStep(SHADOW_PASS) // associated_render_pass
-    );
-    ShaderProgram* sp_shadow = shaderManager->CreateShaderProgram("sp_shadow", spd_shadow, bufferManager,
-        vs_2, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
-		fs_2, {},
-		{}
-    );
-
-    //auto material = materialManager->CreateMaterial("textured_sphere_material", texture_car, norm, {sp, sp_shadow});
     auto material_car = materialManager->CreateMaterial("car", {
         { TextureSlotRole::Albedo, texture_car },
         { TextureSlotRole::Normal, norm }
-		}, { sp, sp_shadow });
+		}, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
     auto material_car2 = materialManager->CreateMaterial("car2", {
         { TextureSlotRole::Albedo, texture_car },
         { TextureSlotRole::Normal, norm }
-        }, { sp, sp_shadow });
+        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
 
     auto material_ground = materialManager->CreateMaterial("ground", {
         { TextureSlotRole::Albedo, glass },
         { TextureSlotRole::Normal, norm }
-        }, { sp, sp_shadow });
+        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
 
     auto material_glass = materialManager->CreateMaterial("glass", {
         { TextureSlotRole::Albedo, ground },
         { TextureSlotRole::Normal, norm }
-        }, { sp, sp_shadow });
+        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
 
   //  auto material_blue = materialManager->CreateMaterial("textured_sphere_material_blue", {
   //      { TextureSlotRole::Albedo, texture_car_blue },
@@ -130,10 +97,10 @@ SDL_AppResult Game::MainInit()
         ShadowComponent{}
     );
     //objectManager->CreateEntity("main_menu",
-    //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, 0.0f, 0, -1.0f, 0.18f, 1, 0, 1, 30 } },
-    //    PositionProxy16{ 1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1 },
+    //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, 0.0f, 0, -1.0f, 0.18f, 1, 1, 1, 30 } },
+    //    PositionProxy16{ 1,0,0,0.0f,  0,1,0,-1.5f,  0,0,1,0.0f,  0,0,0,1 },
     //    ParentComponent{ parent_id },
-    //    LocalOffsetProxy{ 6.0f, 1.0f, 7.5f },
+    //    LocalOffsetProxy{ 0.0f, 0.0f, 2.0f },
     //    ShadowCasterComponent{}
     //);
     //objectManager->CreateEntity("main_menu",
@@ -151,113 +118,13 @@ SDL_AppResult Game::MainInit()
     //    ShadowCasterComponent{}
     //);
     objectManager->CreateEntity("main_menu",
-        SphereLightComponent{ SphereLightComponent::SphereLightData{ 0.0125f, 1.0f, 1.0f, 1.0f, 3.0f } },
+        SphereLightComponent{ SphereLightComponent::SphereLightData{ 1.3125f, 1.0f, 1.0f, 1.0f, 3.0f } },
         PositionProxy16{ 1,0,0,0.0f,  0,1,0,-1.5f,  0,0,1,0.0f,  0,0,0,1 },
 		ParentComponent{ parent_id },
 		LocalOffsetProxy{ 0.0f, 0.0f, 2.0f },
         ShadowCasterComponent{}
     );
 
- //   using namespace DefaultRenderPassSet;
-
- //   ComputeShaderData csd_zeros = shaderManager->CreateComputeShader("../engine/shaders/culling_clear.comp.spv");
- //   ComputeShaderProgram* csp_zeros = shaderManager->CreateComputeShaderProgram("csp_zeros", bufferManager,
- //       csd_zeros,
- //       { DEFAULT_COUNT_BUFFER },
- //       {},
- //       passManager->GetComputePrepassStep(CULLING_ZEROS_PREPASS)
- //   );
-
-	//ComputeShaderData csd = shaderManager->CreateComputeShader("../engine/shaders/culling_count.comp.spv");
- //   ComputeShaderProgram* cs_main_cameras = shaderManager->CreateComputeShaderProgram("compute_sp_main", bufferManager, 
- //       csd, 
- //       { DEFAULT_COUNT_BUFFER },
- //       { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
- //       passManager->GetComputePrepassStep(CULLING_PREPASS));
-
- //   CameraManager* cm = cameraManager;
- //   cs_main_cameras->BindPushConstants<ComputeCullingCountUniform>(
- //       [cm](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
- //           data.num_cameras = 1;
- //           data.cmd_offset = 0;
- //           binder.Push(0, data);
- //   });
-
- //   ComputeShaderProgram* cs_light_cameras = shaderManager->CreateComputeShaderProgram("compute_sp_light", bufferManager,
- //       csd, 
- //       { DEFAULT_COUNT_BUFFER },
- //       { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
- //       passManager->GetComputePrepassStep(CULLING_PREPASS));
-
- //   LightDataModule* ldm = engine->GetLightDataModule();
- //   ObjectManager* om = objectManager;
- //   BatchBuilder* bb = batchBuilder;
- //   cs_light_cameras->BindPushConstants<ComputeCullingCountUniform>(
- //       [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
- //           data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
- //           data.cmd_offset = bb->AskNumCommands() * 1;
- //           binder.Push(0, data);
- //   });
-
- //   ComputeShaderData csd_offset = shaderManager->CreateComputeShader("../engine/shaders/culling_offsets.comp.spv");
- //   ComputeShaderProgram* csp_offsets = shaderManager->CreateComputeShaderProgram("csp_offsets", bufferManager, csd_offset,
- //       { DEFAULT_OFFSET_BUFFER },
- //       { DEFAULT_COUNT_BUFFER },
- //       passManager->GetComputePrepassStep(CULLING_OFFSET_PREPASS)
- //   );
-
- //   ComputeShaderData csd_out_indirect = shaderManager->CreateComputeShader("../engine/shaders/culling_out_indirect.comp.spv");
- //   ComputeShaderProgram* csp_out_indirect = shaderManager->CreateComputeShaderProgram("csp_out_indirect", bufferManager, csd_out_indirect,
- //       { DEFAULT_OUT_INDIRECT_BUFFER },
- //       { DEFAULT_INDIRECT_BUFFER, DEFAULT_COUNT_BUFFER, DEFAULT_OFFSET_BUFFER },
- //       passManager->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS)
- //   );
-
- //   csp_out_indirect->BindPushConstants<ComputeCullingOutIndirectUniform>(
- //       [bb](const PushConstantBinder& binder, ComputeCullingOutIndirectUniform data) {
- //           data.num_commands = bb->AskNumCommands();
- //           data.num_cameras = 1;
- //           data.cmd_offset = 0;
- //           binder.Push(0, data);
- //       });
-
- //   ComputeShaderProgram* csp_out_indirect_lights = shaderManager->CreateComputeShaderProgram("csp_out_indirect_lights", bufferManager, csd_out_indirect,
- //       { DEFAULT_OUT_INDIRECT_BUFFER },
- //       { DEFAULT_INDIRECT_BUFFER, DEFAULT_COUNT_BUFFER, DEFAULT_OFFSET_BUFFER },
- //       passManager->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS)
- //   );
- //   csp_out_indirect_lights->BindPushConstants<ComputeCullingOutIndirectUniform>(
- //       [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingOutIndirectUniform data) {
- //           data.num_commands = bb->AskNumCommands();
- //           data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
- //           data.cmd_offset = bb->AskNumCommands() * 1; // после main секции
- //           binder.Push(0, data);
- //       });
-
- //   ComputeShaderData csd_culling_write = shaderManager->CreateComputeShader("../engine/shaders/culling_write.comp.spv");
- //   ComputeShaderProgram* csp_culling_write_main = shaderManager->CreateComputeShaderProgram("csp_culling_write_main", bufferManager, csd_culling_write,
- //       { DEFAULT_OFFSET_BUFFER, DEFAULT_OUT_TRANSFORM_BUFFER },
- //   { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
- //       passManager->GetComputePassStep(CULLING_WRITE_PASS)
- //   );
- //   csp_culling_write_main->BindPushConstants<ComputeCullingCountUniform>(
- //       [cm](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
- //           data.num_cameras = 1;
- //           data.cmd_offset = 0;
- //           binder.Push(0, data);
- //       });
-
- //   ComputeShaderProgram* csp_culling_write_light = shaderManager->CreateComputeShaderProgram("csp_culling_write_light", bufferManager, csd_culling_write,
- //       { DEFAULT_OFFSET_BUFFER, DEFAULT_OUT_TRANSFORM_BUFFER },
- //   { DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_ENTITY_TO_BATCH_BUFFER, DEFAULT_BOUND_SPHERE_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER, DEFAULT_TRANSFORM_BUFFER },
- //       passManager->GetComputePassStep(CULLING_WRITE_PASS)
- //   );
- //   csp_culling_write_light->BindPushConstants<ComputeCullingCountUniform>(
- //       [ldm, om, bb](const PushConstantBinder& binder, ComputeCullingCountUniform data) {
- //           data.num_cameras = ldm->AskNumLightCameras(om, om->GetActiveScene());
- //           data.cmd_offset = bb->AskNumCommands() * 1;
- //           binder.Push(0, data);
- //       });
     ChangeState(GameState::MAIN_MENU);
     
     return SDL_APP_CONTINUE;
@@ -367,6 +234,21 @@ void Game::MainMenu_Update()
             keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_S] ||
             keys[SDL_SCANCODE_E] || keys[SDL_SCANCODE_Q])
         {
+            objectManager->ForEach<LocalOffsets, SpotLightComponent>(
+                objectManager->GetActiveScene(),
+                [keys, lightSpeed](SoAElement<LocalOffsets> pos_el, SpotLightComponent&)
+            {
+                LocalOffsets& P = pos_el.container();
+                size_t i = pos_el.i();
+
+                if (keys[SDL_SCANCODE_A]) P.ox[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_D]) P.ox[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_W]) P.oz[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_S]) P.oz[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_E]) P.oy[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_Q]) P.oy[i] -= lightSpeed;
+            });
+
             objectManager->ForEach<LocalOffsets, SphereLightComponent>(
                 objectManager->GetActiveScene(),
                 [keys, lightSpeed](SoAElement<LocalOffsets> pos_el, SphereLightComponent&)

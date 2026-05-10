@@ -25,6 +25,8 @@ public:
 	void StoreLightCameras(BufferManager* bm, UploadTask* task, ObjectManager* om, SceneData* scene);
 
     uint32_t AskNumLightCameras(ObjectManager* om, SceneData* scene);
+
+    bool IsShadowLayerDirty(ObjectManager* om, uint32_t layer) { return true; };
 private:
     uint32_t total_size = 0;
 };

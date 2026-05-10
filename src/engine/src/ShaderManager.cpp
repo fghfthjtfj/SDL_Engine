@@ -18,23 +18,13 @@ ShaderManager::ShaderManager(SDL_GPUDevice* device) {
     SDL_free((void*)base);
 };
 
-ShaderProgramDescription* ShaderManager::CreateShaderProgramDescription(const std::string& name, bool enable_depth_test, bool enable_depth_write, bool enable_stencil_test, bool has_color_target, RenderPassStep* rp)
-{
+ShaderProgramDescription* ShaderManager::CreateShaderProgramDescription(const std::string& name) {
     auto it = shader_program_descriptions.find(name);
-    if (it != shader_program_descriptions.end()) {
-        SDL_Log("Shader program description '%s' already exists, returning existing description.", name.c_str());
-        return it->second.get();
-    }
-
-	auto description = std::make_unique<ShaderProgramDescription>();
-	description->enable_depth_test = enable_depth_test;
-	description->enable_depth_write = enable_depth_write;
-	description->enable_stencil_test = enable_stencil_test;
-	description->has_color_target = has_color_target;
-    description->associated_render_pass = rp;
-    ShaderProgramDescription* ptr = description.get();
-    shader_program_descriptions.emplace(name, std::move(description));
-	return ptr;
+    if (it != shader_program_descriptions.end()) return it->second.get();
+    auto desc = std::make_unique<ShaderProgramDescription>();
+    auto* raw = desc.get();
+    shader_program_descriptions.emplace(name, std::move(desc));
+    return raw;
 }
 
 ShaderProgram* ShaderManager::CreateShaderProgram(const std::string& name, ShaderProgramDescription* spd, BufferManager* bm,
@@ -71,31 +61,35 @@ ShaderProgram* ShaderManager::CreateShaderProgram(const std::string& name, Shade
     return ptr;
 }
 
-ComputeShaderProgram* ShaderManager::CreateComputeShaderProgram(const std::string& name, BufferManager* bm,
-    ComputeShaderData cs, std::initializer_list<BufferDataName> rw_storage_buffers, std::initializer_list<BufferDataName> ro_storage_buffers,
+ComputeShaderProgram* ShaderManager::CreateComputeShaderProgram(const std::string& name, ComputeShaderData cs, 
+    std::initializer_list<BufferData*> rw_storage_buffers, std::initializer_list<BufferData*> ro_storage_buffers, 
+    std::initializer_list<ComputeShaderProgram::ComputeRWTextureBinding> rw_storage_textures,
+    std::initializer_list<TextureAtlas*> ro_storage_textures,
+    std::initializer_list<TextureAtlas*> texture_samplers, 
     ComputePassStep* associated_compute_pass)
 {
-    auto it = compute_shader_programs.find(name);
-    if (it != compute_shader_programs.end()) {
+    auto it = compute_shader_programs_by_name.find(name);
+    if (it != compute_shader_programs_by_name.end()) {
         SDL_Log("Compute shader program '%s' already exists, returning existing.", name.c_str());
-        return it->second.get();
+        return it->second;
     }
 
     auto result = std::make_unique<ComputeShaderProgram>();
     result->cs = cs;
-    result->ro_storage_buffers.reserve(ro_storage_buffers.size());
-    for (const char* buffer_name : ro_storage_buffers) {
-        result->ro_storage_buffers.push_back(bm->GetBufferData(buffer_name));
-    }
-
-    result->rw_storage_buffers.reserve(rw_storage_buffers.size());
-    for (const char* buffer_name : rw_storage_buffers) {
-        result->rw_storage_buffers.push_back(bm->GetBufferData(buffer_name));
-    }
     result->associated_compute_pass = associated_compute_pass;
 
+    result->ro_storage_buffers.assign(ro_storage_buffers);
+    result->rw_storage_buffers.assign(rw_storage_buffers);
+    result->rw_storage_textures.assign(rw_storage_textures);
+
+    result->ro_storage_textures.assign(ro_storage_textures);
+    result->texture_samplers.assign(texture_samplers);
+
+    result->debug_name = name;
+
     ComputeShaderProgram* ptr = result.get();
-    compute_shader_programs.emplace(name, std::move(result));
+    compute_shader_programs.push_back(std::move(result));
+    compute_shader_programs_by_name.emplace(name, ptr);
 
     dirty_compute_pipelines = true;
     return ptr;
@@ -121,9 +115,9 @@ ShaderProgram* ShaderManager::GetShaderProgram(const std::string& name)
 
 ComputeShaderProgram* ShaderManager::GetComputeShaderProgram(const std::string& name)
 {
-    auto it = compute_shader_programs.find(name);
-    if (it != compute_shader_programs.end())
-        return it->second.get();
+    auto it = compute_shader_programs_by_name.find(name);
+    if (it != compute_shader_programs_by_name.end())
+        return it->second;
     SDL_Log("Compute shader data '%s' not found", name.c_str());
 	return nullptr;
 }
@@ -141,12 +135,41 @@ ShaderManager::~ShaderManager()
 		if (!prog->vs.attributes.empty())
 			prog->vs.attributes.clear();
 	}
-    for (auto& pair : compute_shader_programs) {
-        auto& prog = pair.second;
+    for (auto& prog : compute_shader_programs) {
         if (prog->cs.spv_code) {
             SDL_free(prog->cs.spv_code);
         }
 	}
 	shader_programs.clear();
 	SDL_ShaderCross_Quit();
+}
+
+ShaderProgramDescription* ShaderProgramDescription::BehavesAsShadowCaster() {
+    depth_test = true;  depth_write = true;  stencil_test = false;
+    color_blend = false;
+    cull_mode = SDL_GPU_CULLMODE_NONE;  // классика для shadow acne
+    return this;
+}
+ShaderProgramDescription* ShaderProgramDescription::BehavesAsOpaqueGeometry() {
+    depth_test = true;  depth_write = true;
+    color_blend = false;
+    cull_mode = SDL_GPU_CULLMODE_NONE;
+    return this;
+}
+ShaderProgramDescription* ShaderProgramDescription::BehavesAsTransparentGeometry() {
+    depth_test = true;  depth_write = false;       // ключевое: не пишем depth
+    color_blend = true;
+    cull_mode = SDL_GPU_CULLMODE_NONE;
+    return this;
+}
+ShaderProgramDescription* ShaderProgramDescription::BehavesAsDepthPrepass() {
+    depth_test = true;  depth_write = true;
+    cull_mode = SDL_GPU_CULLMODE_NONE;
+    return this;
+}
+ShaderProgramDescription* ShaderProgramDescription::BehavesAsFullscreenEffect() {
+    depth_test = false; depth_write = false;
+    color_blend = false;
+    cull_mode = SDL_GPU_CULLMODE_NONE;
+    return this;
 }

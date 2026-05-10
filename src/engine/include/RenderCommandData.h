@@ -4,13 +4,15 @@
 #include <SDL3/SDL_gpu.h>
 #include "Aliases.h"
 #include "MaterialData.h"
-#include "OrderedMap.h"
 
 struct SubMeshData;
 struct BufferData;
 struct TextureData;
+struct TextureAtlas;
 
 class PassManager;
+
+using namespace BatchKeys;
 
 struct ModelBatchData {
     std::vector<uint32_t> pib_sub_buffer;
@@ -38,21 +40,17 @@ struct ShaderBatchData {
 };
 
 struct RenderPassTexturesInfo {
-    void CreateColorTextureInfo(SDL_GPULoadOp load_op, SDL_GPUStoreOp store_op, SDL_FColor color, Uint32 numColorTargets = 1);
-    void CreateDepthTextureInfo(SDL_GPULoadOp load_op, SDL_GPUStoreOp store_op);
+    void CreateColorTextureInfo(SDL_GPULoadOp load_op, SDL_GPUStoreOp store_op, SDL_FColor color, SDL_GPUTextureFormat format, Uint32 numColorTargets = 1);
+    void CreateDepthTextureInfo(SDL_GPULoadOp load_op, SDL_GPUStoreOp store_op, SDL_GPUTextureFormat format);
     void SetColorTexture(SDL_GPUTexture* tex);
     void SetDepthTexture(SDL_GPUTexture* tex);
 
+    void SetColorTargetInfoLayer(uint32_t layer) { colorTargetInfo.layer_or_depth_plane = layer; };
     SDL_GPUColorTargetInfo colorTargetInfo{};
     Uint32 numColorTargets = 0;
+    SDL_GPUTextureFormat color_format = SDL_GPU_TEXTUREFORMAT_INVALID;
+    SDL_GPUTextureFormat depth_format = SDL_GPU_TEXTUREFORMAT_INVALID;
     SDL_GPUDepthStencilTargetInfo depthTargetInfo{};
-};
-
-struct RasterizerStateBiasParams {
-    float depth_bias_constant_factor = 0.0f;
-    float depth_bias_slope_factor = 0.0f;
-    float depth_bias_clamp = 0.0f;
-    bool enable_depth_bias = false;
 };
 
 struct RenderPassStep {
@@ -60,19 +58,27 @@ struct RenderPassStep {
     std::unordered_map<ShaderBatchKey, ShaderBatchData> shader_batches;
     std::function<void(SDL_GPUCommandBuffer*, PassManager*, RenderPassStep&)> render_function;
     std::vector<SDL_GPUTextureSamplerBinding> global_texture_bindings;
-	RasterizerStateBiasParams rsb_params;
     int pass_index = -1;
 };
 
 struct ComputeShaderBatchData {
     std::function<void(const PushConstantBinder&, const void*)> push_func = {};
+    std::function<void(DispatchSizeBinder&, const void*)> dispatch_func = {};
     std::vector<BufferData*> ro_storage_buffers; // set=0, SDL_BindGPUComputeStorageBuffers
     std::vector<BufferData*> rw_storage_buffers; // set=1, SDL_BeginGPUComputePass
+    std::vector<SDL_GPUTexture*> ro_storage_textures;
+    std::vector<SDL_GPUStorageTextureReadWriteBinding> rw_storage_textures;
+    std::vector<SDL_GPUTextureSamplerBinding> texture_binding;
+    std::string debug_name;
+    uint32_t threadcount_x = 1;
+    uint32_t threadcount_y = 1;
+    uint32_t threadcount_z = 1;
     SDL_GPUComputePipeline* pipeline = nullptr;
 };
 
 struct ComputePassStep {
-    std::unordered_map<ShaderBatchKey, ComputeShaderBatchData> shader_batches;
+    std::vector<ComputeShaderBatchData> shader_batches;
     std::function<void(SDL_GPUCommandBuffer*, PassManager*, ComputePassStep&, uint8_t)> compute_function;
     int pass_index = -1;
 };
+
