@@ -42,13 +42,14 @@ The repository already includes a test scene in the `game` class — it's the au
 
 ### Build
 
+#### C++ step
 ```bash
 git clone https://github.com/Nikel12345/XOR_Engine.git
 cd XOR_Engine
 cmake -B build
 cmake --build build
 ```
-## Python
+#### Python step
 ```bash
 cd scripts/model_loader
 python -m venv venv
