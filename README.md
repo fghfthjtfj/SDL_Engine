@@ -18,7 +18,7 @@ There is no scripting layer. Game logic is written in plain C++ using engine sys
 
 ## Features
 
-- **Strict ECS** — all game objects, logic, and state live in entities, components, and systems
+- **ECS** — all game objects, logic, and state live in entities, components, and systems
 - **SDL3 GPU backend** — cross-platform Vulkan/Metal/D3D12 via SDL3's GPU API
 - **Custom render pipeline** — swap out or extend the default renderer; write your own passes and buffers from scratch
 - **GPU-driven rendering** — custom GPU-driven passes supported out of the box
@@ -43,12 +43,17 @@ The repository already includes a test scene in the `game` class — it's the au
 ### Build
 
 ```bash
-git clone https://github.com/fghfthjtfj/SDL_Engine.git
-cd SDL_Engine
+git clone https://github.com/Nikel12345/XOR_Engine.git
+cd XOR_Engine
 cmake -B build
 cmake --build build
 ```
-
+## Python
+```bash
+cd scripts/model_loader
+python -m venv venv
+pip install -r requirements.txt
+```
 ---
 
 ## License
