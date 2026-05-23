@@ -16,6 +16,16 @@ class InderectDataModule;
 
 namespace DefaultRenderPassNamespace
 {
+    inline constexpr const char* DEPTH_PASS = "_DefaultDepthRenderPass";
+    inline constexpr const char* MAIN_PASS = "_DefaultMainRenderPass";
+    inline constexpr const char* SHADOW_PASS = "_DefaultShadowRenderPass";
+    inline constexpr const char* CULLING_PREPASS = "_DefaultCullingComputePass";
+    inline constexpr const char* CULLING_ZEROS_PREPASS = "_DefaultCullingZerosComputePass";
+    inline constexpr const char* CULLING_OFFSET_PREPASS = "_DefaultCullingOffsetComputePass";
+    inline constexpr const char* CULLING_OUT_INDIRECT_PREPASS = "_DefaultCullingOutIndirectComputePass";
+    inline constexpr const char* CULLING_WRITE_PASS = "_DefaultCullingWritePass";
+    inline constexpr const char* SHADOW_BLUR_PASS = "_DefaultBlurPass";
+
     inline const std::string SHADOW_DEPTH_FLAT_ARRAY = "shadow_depth_flat_array";
 
 	void SetDefaultShadowPCFRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm, ObjectManager* om, BatchBuilder* bb);
@@ -50,5 +60,7 @@ namespace DefaultRenderPassNamespace
     inline const std::string SHADOW_MOMENTS_ARRAY = "shadow_moments_array";
     inline const std::string SHADOW_MOMENTS_BLUR_TEMP = "shadow_moments_single_temp";
 
+
+    void SetDefaultMainRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm, SDL_GPUDevice* dev, SDL_Window* win);
 
 }

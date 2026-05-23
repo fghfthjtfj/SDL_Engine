@@ -175,11 +175,46 @@ enum LightTypes {
 struct SpotLightComponent {
     struct SpotLightData {
         float source_radius = 0;
-        float dir_x, dir_y, dir_z = 1;
+        float dir_x = 0, dir_y = 0, dir_z = 1;
         float source_angle = 0.3f;
-        float r, g, b = 1;
+        float r = 1, g = 1, b = 1;
         float power = 1;
-        float distance = 1;
+        float attenuation = 1.0f;
+
+        SpotLightData(
+            float source_radius = 0,
+            float dir_x = 0, float dir_y = 0, float dir_z = 0,
+            float source_angle = 0.3f,
+            float r = 1, float g = 1, float b = 1,
+            float power = 1,
+            float attenuation = 1.0f
+        )
+            : source_radius(source_radius),
+            dir_x(dir_x), dir_y(dir_y), dir_z(dir_z),
+            source_angle(source_angle),
+            r(r), g(g), b(b),
+            power(power),
+            attenuation(attenuation) {
+        }
+
+        void ResolveDistance() {
+            if (cached_attenuation != attenuation
+                || cached_power != power
+                || cached_source_angle != source_angle) {
+                max_distance = std::sqrt(power * attenuation) / std::tan(source_angle);
+                cached_attenuation = attenuation;
+                cached_power = power;
+                cached_source_angle = source_angle;
+            }
+        }
+
+        float GetMaxDistance() const { return max_distance; }
+
+    private:
+        float max_distance = 0.0f;
+        float cached_attenuation = -1.0f;
+        float cached_power = -1.0f;
+        float cached_source_angle = -1.0f;
     } light_data;
     bool needsUpdate = true;
 };
@@ -187,10 +222,37 @@ struct SpotLightComponent {
 struct SphereLightComponent {
     struct SphereLightData {
         float source_radius = 0;
-        float r, g, b = 1;
+        float r = 1, g = 1, b = 1;
         float power = 1;
-        float distance = 1;
-	} light_data;
+        float attenuation = 1.0f;
+
+        SphereLightData(
+            float source_radius = 0,
+            float r = 1, float g = 1, float b = 1,
+            float power = 1,
+            float attenuation = 1.0f
+        )
+            : source_radius(source_radius),
+            r(r), g(g), b(b),
+            power(power),
+            attenuation(attenuation) {
+        }
+
+        void ResolveDistance() {
+            if (cached_attenuation != attenuation || cached_power != power) {
+                max_distance = std::sqrt(power * attenuation);
+                cached_attenuation = attenuation;
+                cached_power = power;
+            }
+        }
+
+        float GetMaxDistance() const { return max_distance; }
+
+    private:
+        float max_distance = 0.0f;
+        float cached_attenuation = -1.0f;
+        float cached_power = -1.0f;
+    } light_data;
     bool needsUpdate = true;
 };
 

@@ -38,8 +38,8 @@ SDL_AppResult Game::MainInit()
         glm::vec3(0.43f, -0.4f, -0.8f), // точка взгляда
         glm::vec3(0.0f, 1.0f, 0.0f)  // вектор вверх
     );
-
-	SDL_GPUSampler* sampler = textureManager->GetSampler(DEFAULT_SAMPLER);
+    
+	SDL_GPUSampler* sampler = textureManager->GetSampler(DefaultSamplersNames::DEFAULT_SAMPLER);
 	using namespace TexturePresets;
 
 	TextureAtlas* atlas = textureManager->CreateTextureAtlas("albedo_atlas", TexturePresets::GetCreateInfo(TexturePreset::Albedo_Atlas2048_1Layer), sampler);
@@ -61,34 +61,51 @@ SDL_AppResult Game::MainInit()
     auto material_car = materialManager->CreateMaterial("car", {
         { TextureSlotRole::Albedo, texture_car },
         { TextureSlotRole::Normal, norm }
-		}, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
+        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
     auto material_car2 = materialManager->CreateMaterial("car2", {
         { TextureSlotRole::Albedo, texture_car },
         { TextureSlotRole::Normal, norm }
         }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
-
-    auto material_ground = materialManager->CreateMaterial("ground", {
+    auto material_ground = materialManager->CreateMaterial("glass", {
         { TextureSlotRole::Albedo, glass },
         { TextureSlotRole::Normal, norm }
-        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
-
-    auto material_glass = materialManager->CreateMaterial("glass", {
+        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow")});
+    auto material_glass = materialManager->CreateMaterial("ground", {
         { TextureSlotRole::Albedo, ground },
         { TextureSlotRole::Normal, norm }
-        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
-
+        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow")});
   //  auto material_blue = materialManager->CreateMaterial("textured_sphere_material_blue", {
   //      { TextureSlotRole::Albedo, texture_car_blue },
 		//{ TextureSlotRole::Normal, norm }
 		//}, { sp, sp_shadow });
     //modelManager->CreateModel("car", "models/cube_1_v.bin", "models/cube_1_i.bin");
-    modelManager->CreateModel("car", "models/new_car.bin", "models/new_car_i.bin");
+    modelManager->CreateModel("car", "models/new_car_n_fixed.bin", "models/new_car_n_fixed_i.bin");
 
     objectManager->CreateEntity("main_menu",
         MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
         ModelComponent{ (*modelManager)["car"] },
         PositionProxy16{ 1,0,0,3,  0,1,0,0,  0,0,1,0,  0,0,0,1 },
         ShadowComponent{}
+    );
+    objectManager->CreateEntity("main_menu",
+        MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
+        ModelComponent{ (*modelManager)["car"] },
+        PositionProxy16{
+            -1, 0,  0, 0.5,     // X basis = (-1, 0, 0)
+             0, 1,  0, 0.0,
+             0, 0, -1, 0.0,     // Z basis = (0, 0, -1)
+             0, 0,  0, 1.0
+        }, ShadowComponent{}
+    );
+    objectManager->CreateEntity("main_menu",
+        MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
+        ModelComponent{ (*modelManager)["car"] },
+        PositionProxy16{
+            -1, 0,  0, 0.5f,     // X basis = (-1, 0, 0)
+             0, 1,  0, 0.0f,
+             0, 0, -1, 2.5f,     // Z basis = (0, 0, -1)
+             0, 0,  0, 1.0f
+        }, ShadowComponent{}
     );
     Entity parent_id = objectManager->CreateEntity("main_menu",
         MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
@@ -97,33 +114,16 @@ SDL_AppResult Game::MainInit()
         ShadowComponent{}
     );
     //objectManager->CreateEntity("main_menu",
-    //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, 0.0f, 0, -1.0f, 0.18f, 1, 1, 1, 30 } },
-    //    PositionProxy16{ 1,0,0,0.0f,  0,1,0,-1.5f,  0,0,1,0.0f,  0,0,0,1 },
-    //    ParentComponent{ parent_id },
-    //    LocalOffsetProxy{ 0.0f, 0.0f, 2.0f },
-    //    ShadowCasterComponent{}
-    //);
-    //objectManager->CreateEntity("main_menu",
-    //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, 0.0f, 0, -1.0f, 0.38f, 1, 1, 1, 30 } },
-    //    PositionProxy16{ 1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1 },
-    //    ParentComponent{ parent_id },
-    //    LocalOffsetProxy{ 6.5f, 1.0f, 7.5f },
-    //    ShadowCasterComponent{}
-    //);
-    //objectManager->CreateEntity("main_menu",
-    //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, -1.0f, 0, -1.0f, 0.38f, 1, 1, 1, 30 } },
-    //    PositionProxy16{ 1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1 },
-    //    ParentComponent{ parent_id },
-    //    LocalOffsetProxy{ 5.5f, 1.0f, 7.5f },
+    //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, 1.0f, 0.0f, 0.0f, 0.18f, 1, 1, 1, 100 } },
+    //    PositionProxy16{ 1,0,0,-2.5f,  0,1,0,0,  0,0, 1,1.25f,  0,0,0,1 },
     //    ShadowCasterComponent{}
     //);
     objectManager->CreateEntity("main_menu",
-        SphereLightComponent{ SphereLightComponent::SphereLightData{ 1.3125f, 1.0f, 1.0f, 1.0f, 3.0f } },
-        PositionProxy16{ 1,0,0,0.0f,  0,1,0,-1.5f,  0,0,1,0.0f,  0,0,0,1 },
-		ParentComponent{ parent_id },
-		LocalOffsetProxy{ 0.0f, 0.0f, 2.0f },
+        SphereLightComponent{ SphereLightComponent::SphereLightData{ 0.0125f, 1.0f, 1.0f, 1.0f, 11.0f, 200.0f } },
+        PositionProxy16{ 1,0,0, 0.0f,  0,1,0,0,  0,0, 1,1.25f,  0,0,0,1 },
         ShadowCasterComponent{}
     );
+
 
     ChangeState(GameState::MAIN_MENU);
     
@@ -133,7 +133,7 @@ SDL_AppResult Game::MainInit()
 SDL_AppResult Game::MainIterate()
 {
     engine->BeginImGuiFrame();
-    //UI_ImGui::Iterate(objectManager, cameraManager);
+    UI_ImGui::Iterate(objectManager, cameraManager);
     engine->EndImGuiFrame();
 
     int mouse_buttons = SDL_GetMouseState(&mouse_x, &mouse_y);
@@ -234,34 +234,34 @@ void Game::MainMenu_Update()
             keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_S] ||
             keys[SDL_SCANCODE_E] || keys[SDL_SCANCODE_Q])
         {
-            objectManager->ForEach<LocalOffsets, SpotLightComponent>(
+            objectManager->ForEach<Positions, SpotLightComponent>(
                 objectManager->GetActiveScene(),
-                [keys, lightSpeed](SoAElement<LocalOffsets> pos_el, SpotLightComponent&)
+                [keys, lightSpeed](SoAElement<Positions> pos_el, SpotLightComponent&)
             {
-                LocalOffsets& P = pos_el.container();
+                Positions& P = pos_el.container();
                 size_t i = pos_el.i();
 
-                if (keys[SDL_SCANCODE_A]) P.ox[i] -= lightSpeed;
-                if (keys[SDL_SCANCODE_D]) P.ox[i] += lightSpeed;
-                if (keys[SDL_SCANCODE_W]) P.oz[i] += lightSpeed;
-                if (keys[SDL_SCANCODE_S]) P.oz[i] -= lightSpeed;
-                if (keys[SDL_SCANCODE_E]) P.oy[i] += lightSpeed;
-                if (keys[SDL_SCANCODE_Q]) P.oy[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_A]) P.w[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_D]) P.w[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_W]) P.h[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_S]) P.h[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_E]) P.d[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_Q]) P.d[i] -= lightSpeed;
             });
 
-            objectManager->ForEach<LocalOffsets, SphereLightComponent>(
+            objectManager->ForEach<Positions, SphereLightComponent>(
                 objectManager->GetActiveScene(),
-                [keys, lightSpeed](SoAElement<LocalOffsets> pos_el, SphereLightComponent&)
+                [keys, lightSpeed](SoAElement<Positions> pos_el, SphereLightComponent&)
             {
-                LocalOffsets& P = pos_el.container();
+                Positions& P = pos_el.container();
                 size_t i = pos_el.i();
 
-                if (keys[SDL_SCANCODE_A]) P.ox[i] -= lightSpeed;
-                if (keys[SDL_SCANCODE_D]) P.ox[i] += lightSpeed;
-                if (keys[SDL_SCANCODE_W]) P.oz[i] += lightSpeed;
-                if (keys[SDL_SCANCODE_S]) P.oz[i] -= lightSpeed;
-                if (keys[SDL_SCANCODE_E]) P.oy[i] += lightSpeed;
-                if (keys[SDL_SCANCODE_Q]) P.oy[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_A]) P.w[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_D]) P.w[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_W]) P.h[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_S]) P.h[i] -= lightSpeed;
+                if (keys[SDL_SCANCODE_E]) P.d[i] += lightSpeed;
+                if (keys[SDL_SCANCODE_Q]) P.d[i] -= lightSpeed;
             });
         }
     }

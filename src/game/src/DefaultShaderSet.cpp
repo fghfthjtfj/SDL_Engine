@@ -15,6 +15,7 @@ namespace DefaultShaderProgramSet
     // render
     bool render_main_inited = false;
     bool render_shadow_inited = false;
+    bool render_transparent_inited = false;
     
     // compute
     bool culling_zeros_inited = false;
@@ -28,58 +29,99 @@ namespace DefaultShaderProgramSet
 
 void DefaultShaderProgramSet::SetMainShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm)
 {
+    using namespace DefaultBuffersNames;
     if (render_main_inited) {
         SDL_Log("Main render shader programs already initialized.");
         return;
     }
     VertexShaderData vs = sm->CreateVertexShader("../engine/shaders_code/main_pass/main_pass.vert.hlsl");
     FragmentShaderData fs = sm->CreateFragmentShader("../engine/shaders_code/main_pass/main_pass.frag.hlsl");
+	FragmentShaderData fs_debug = sm->CreateFragmentShader("../engine/shaders_code/main_pass/debug_pass.frag.hlsl");
     ShaderProgramDescription* spd_main =
         sm->CreateShaderProgramDescription("spd")
-        ->UsedInRenderPass(pm->GetRenderPassStep(MAIN_PASS))
+        ->UsedInRenderPass(pm->GetRenderPassStep(DefaultRenderPassNamespace::MAIN_PASS))
         ->BehavesAsOpaqueGeometry()->DoesNotCull()
         ;
 
-    ShaderProgram* sp = sm->CreateShaderProgram("sp", spd_main, bm,
+    sm->CreateShaderProgram("sp", spd_main, bm,
         vs, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
         fs, { DEFAULT_LIGHT_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
         { TextureSlotRole::Albedo, TextureSlotRole::Normal }
     );
 
     render_main_inited = true;
+ //   ShaderProgramDescription* spd_debug =
+ //       sm->CreateShaderProgramDescription("spd_debug")
+ //       ->UsedInRenderPass(pm->GetRenderPassStep("DEBUG_PASS"))
+ //       ->BehavesAsOpaqueGeometry()->DoesNotCull()
+ //       ;
+ //
+	//VertexShaderData vs_old = sm->CreateVertexShaderFromSPV("../engine/shaders_spv/main_pass.vert.spv");
+	//FragmentShaderData fs_old = sm->CreateFragmentShaderFromSPV("../engine/shaders_spv/main_pass.frag.spv");
+ //   sm->CreateShaderProgram("sp_debug", spd_debug, bm,
+ //       vs, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_CAMERA_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
+ //       fs_debug, { DEFAULT_LIGHT_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
+ //       { TextureSlotRole::Albedo, TextureSlotRole::Normal }
+ //   );
+
 }
 
 void DefaultShaderProgramSet::SetDefaultShadowShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm)
 {
+    using namespace DefaultBuffersNames;
     if (render_shadow_inited) {
         SDL_Log("Shadow render shader programs already initialized.");
         return;
     }
     VertexShaderData vs_2 = sm->CreateVertexShader("../engine/shaders_code/shadow_pass/shadow_pass.vert.hlsl");
-    FragmentShaderData fs_2 = sm->CreateFragmentShader("../engine/shaders_code/dummy.frag.hlsl");
+    FragmentShaderData fs_2 = sm->CreateFragmentShader("../engine/shaders_code/shadow_pass/shadow_pass.frag.hlsl");
     RasterizerStateBiasParams shadow_rsbp = {};
     shadow_rsbp.enable_depth_bias = true;
-    shadow_rsbp.depth_bias_constant_factor = 2.0f;   // подбираешь
-    shadow_rsbp.depth_bias_slope_factor = 4.0f;   // подбираешь
+    shadow_rsbp.depth_bias_constant_factor = 1.0f;   // подбираешь
+    shadow_rsbp.depth_bias_slope_factor = 2.0f;   // подбираешь
     shadow_rsbp.depth_bias_clamp = 0.0f;
     ShaderProgramDescription* spd_shadow =
         sm->CreateShaderProgramDescription("spd_shadow")
-        ->UsedInRenderPass(pm->GetRenderPassStep(SHADOW_PASS))
+        ->UsedInRenderPass(pm->GetRenderPassStep(DefaultRenderPassNamespace::SHADOW_PASS))
         ->BehavesAsShadowCaster()->DoesNotCull()
-        ->WithDepthBias({ shadow_rsbp })
+        //->WithDepthBias({ shadow_rsbp })
         ;
 
     ShaderProgram* sp_shadow = sm->CreateShaderProgram("sp_shadow", spd_shadow, bm,
         vs_2, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
-        fs_2, { DEFAULT_LIGHT_CAMERA_BUFFER },
+        fs_2, {},
         {}
     );
 
+ //   ShaderProgramDescription* spd_shadow_old =
+ //       sm->CreateShaderProgramDescription("spd_shadow_old")
+ //       ->UsedInRenderPass(pm->GetRenderPassStep("DEBUG_SHADOW_PASS"))
+ //       ->BehavesAsShadowCaster()->DoesNotCull()
+ //       //->WithDepthBias({ shadow_rsbp })
+ //       ;
+	//VertexShaderData vs_shadow_old = sm->CreateVertexShaderFromSPV("../engine/shaders_spv/shadow_pass.vert.spv");
+	//FragmentShaderData fs_shadow_old = sm->CreateFragmentShaderFromSPV("../engine/shaders_spv/shadow_pass.frag.spv");
+ //   sm->CreateShaderProgram("sp_shadow_old", spd_shadow_old, bm,
+ //       vs_shadow_old, { DEFAULT_TRANSFORM_BUFFER, DEFAULT_POSITION_INDEX_BUFFER, DEFAULT_LIGHT_CAMERA_BUFFER },
+ //       fs_shadow_old, {},
+ //       {}
+	//);
     render_shadow_inited = true;
+}
+
+void DefaultShaderProgramSet::SetTransparentShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm)
+{
+    using namespace DefaultBuffersNames;
+    if (render_transparent_inited) {
+        SDL_Log("Transparent render shader programs already initialized.");
+        return;
+    }
+
 }
 
 void DefaultShaderProgramSet::SetCullingZerosPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm)
 {
+    using namespace DefaultBuffersNames;
     if (culling_zeros_inited) {
         SDL_Log("Culling zeros programs already initialized.");
         return;
@@ -94,7 +136,7 @@ void DefaultShaderProgramSet::SetCullingZerosPrograms(BufferManager* bm, ShaderM
         {},                        // ro_storage_textures
         {},                        // rw_storage_textures
         {},                        // texture_samplers
-        pm->GetComputePrepassStep(CULLING_ZEROS_PREPASS));
+        pm->GetComputePrepassStep(DefaultRenderPassNamespace::CULLING_ZEROS_PREPASS));
 
     culling_zeros_inited = true;
 }
@@ -104,6 +146,7 @@ void DefaultShaderProgramSet::SetCullingCountPrograms(
     CameraManager* cm, ObjectManager* om, BatchBuilder* bb,
     LightDataModule* ldm)
 {
+    using namespace DefaultBuffersNames;
     if (culling_count_inited) {
         SDL_Log("Culling count programs already initialized.");
         return;
@@ -124,7 +167,7 @@ void DefaultShaderProgramSet::SetCullingCountPrograms(
             bm->GetBufferData(DEFAULT_TRANSFORM_BUFFER)
         },                                                              // ro
         {}, {}, {},
-        pm->GetComputePrepassStep(CULLING_PREPASS));
+        pm->GetComputePrepassStep(DefaultRenderPassNamespace::CULLING_PREPASS));
 
     cs_main->BindPushConstants<DefaultRenderPassNamespace::ComputeCullingCountUniform>(
         [cm](const PushConstantBinder& binder, DefaultRenderPassNamespace::ComputeCullingCountUniform data) {
@@ -145,7 +188,7 @@ void DefaultShaderProgramSet::SetCullingCountPrograms(
             bm->GetBufferData(DEFAULT_TRANSFORM_BUFFER)
         },                                                              // ro
         {}, {}, {},
-        pm->GetComputePrepassStep(CULLING_PREPASS));
+        pm->GetComputePrepassStep(DefaultRenderPassNamespace::CULLING_PREPASS));
 
     cs_light->BindPushConstants<DefaultRenderPassNamespace::ComputeCullingCountUniform>(
         [ldm, om, bb](const PushConstantBinder& binder, DefaultRenderPassNamespace::ComputeCullingCountUniform data) {
@@ -160,6 +203,7 @@ void DefaultShaderProgramSet::SetCullingCountPrograms(
 void DefaultShaderProgramSet::SetCullingOffsetPrograms(
     BufferManager* bm, ShaderManager* sm, PassManager* pm)
 {
+    using namespace DefaultBuffersNames;
     if (culling_offset_inited) {
         SDL_Log("Culling offset programs already initialized.");
         return;
@@ -172,7 +216,7 @@ void DefaultShaderProgramSet::SetCullingOffsetPrograms(
         { bm->GetBufferData(DEFAULT_OFFSET_BUFFER) },      // rw
         { bm->GetBufferData(DEFAULT_COUNT_BUFFER) },       // ro
         {}, {}, {},
-        pm->GetComputePrepassStep(CULLING_OFFSET_PREPASS));
+        pm->GetComputePrepassStep(DefaultRenderPassNamespace::CULLING_OFFSET_PREPASS));
 
     culling_offset_inited = true;
 }
@@ -181,6 +225,7 @@ void DefaultShaderProgramSet::SetCullingOutIndirectPrograms(
     BufferManager* bm, ShaderManager* sm, PassManager* pm,
     ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm)
 {
+    using namespace DefaultBuffersNames;
     if (culling_out_indirect_inited) {
         SDL_Log("Culling out indirect programs already initialized.");
         return;
@@ -199,7 +244,7 @@ void DefaultShaderProgramSet::SetCullingOutIndirectPrograms(
             bm->GetBufferData(DEFAULT_OFFSET_BUFFER)
         },                                                    // ro
         {}, {}, {},
-        pm->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS));
+        pm->GetComputePrepassStep(DefaultRenderPassNamespace::CULLING_OUT_INDIRECT_PREPASS));
 
     csp_out_main->BindPushConstants<DefaultRenderPassNamespace::ComputeCullingOutIndirectUniform>(
         [bb](const PushConstantBinder& binder, DefaultRenderPassNamespace::ComputeCullingOutIndirectUniform data) {
@@ -219,7 +264,7 @@ void DefaultShaderProgramSet::SetCullingOutIndirectPrograms(
             bm->GetBufferData(DEFAULT_OFFSET_BUFFER)
         },                                                    // ro
         {}, {}, {},
-        pm->GetComputePrepassStep(CULLING_OUT_INDIRECT_PREPASS));
+        pm->GetComputePrepassStep(DefaultRenderPassNamespace::CULLING_OUT_INDIRECT_PREPASS));
 
     csp_out_light->BindPushConstants<DefaultRenderPassNamespace::ComputeCullingOutIndirectUniform>(
         [ldm, om, bb](const PushConstantBinder& binder, DefaultRenderPassNamespace::ComputeCullingOutIndirectUniform data) {
@@ -237,6 +282,7 @@ void DefaultShaderProgramSet::SetCullingWritePrograms(
     CameraManager* cm, ObjectManager* om, BatchBuilder* bb,
     LightDataModule* ldm)
 {
+    using namespace DefaultBuffersNames;
     if (culling_write_inited) {
         SDL_Log("Culling write programs already initialized.");
         return;
@@ -260,7 +306,7 @@ void DefaultShaderProgramSet::SetCullingWritePrograms(
             bm->GetBufferData(DEFAULT_TRANSFORM_BUFFER)
         },  // ro
         {}, {}, {},
-        pm->GetComputePassStep(CULLING_WRITE_PASS));
+        pm->GetComputePassStep(DefaultRenderPassNamespace::CULLING_WRITE_PASS));
 
     csp_main->BindPushConstants<DefaultRenderPassNamespace::ComputeCullingCountUniform>(
         [cm](const PushConstantBinder& binder, DefaultRenderPassNamespace::ComputeCullingCountUniform data) {
@@ -284,7 +330,7 @@ void DefaultShaderProgramSet::SetCullingWritePrograms(
             bm->GetBufferData(DEFAULT_TRANSFORM_BUFFER)
         },  // ro
         {}, {}, {},
-        pm->GetComputePassStep(CULLING_WRITE_PASS));
+        pm->GetComputePassStep(DefaultRenderPassNamespace::CULLING_WRITE_PASS));
 
     csp_light->BindPushConstants<DefaultRenderPassNamespace::ComputeCullingCountUniform>(
         [ldm, om, bb](const PushConstantBinder& binder, DefaultRenderPassNamespace::ComputeCullingCountUniform data) {

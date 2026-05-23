@@ -15,9 +15,9 @@ struct LightLayout {
 	float r, g, b; // color							// 44 байт
 	float power;									// 48 байта
 	int type;										// 52 байт
-	int offset;										// 56 байта
-	int padding = 0;								// 60 байт
-	int padding2 = 0;								// 64 байт
+	int offset;										// 56 байт
+	float max_range = 0;								// 60 байт
+	int padding = 0;								// 64 байт
 };
 
 //static const glm::vec3 cubeDirs[6] = {

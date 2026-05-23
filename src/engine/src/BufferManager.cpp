@@ -4,6 +4,7 @@
 #include "LightStruct.h"
 
 BufferManager::BufferManager(SDL_GPUDevice* device) : ResourceManager(device) {
+    using namespace DefaultBuffersNames;
 	CreateBufferData(DEFAULT_VERTEX_BUFFER, 819060, SDL_GPU_BUFFERUSAGE_VERTEX, BufferDataType::Static);
 	CreateBufferData(DEFAULT_INDEX_BUFFER, 819006, SDL_GPU_BUFFERUSAGE_INDEX, BufferDataType::Static);
 	CreateBufferData(DEFAULT_TRANSFORM_BUFFER, BASE_TB_SIZE / 10, SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ, BufferDataType::Dynamic);

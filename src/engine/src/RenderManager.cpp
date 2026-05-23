@@ -185,7 +185,7 @@ RenderPassStep* PassManager::GetRenderPassStep(const RenderPassName& name)
 	if (it != render_steps.end()) {
 		return it->second.get();
 	}
-	SDL_Log("Render pass '%s' not found", name.c_str());
+	SDL_Log("RenderManager::Render pass '%s' not found", name.c_str());
 	return nullptr;
 }
 
@@ -195,7 +195,7 @@ ComputePassStep* PassManager::GetComputePassStep(const ComputePassName& name)
 	if (it != compute_steps.end()) {
 		return it->second.get();
 	}
-	SDL_Log("Compute pass '%s' not found", name.c_str());
+	SDL_Log("RenderManager::Compute pass '%s' not found", name.c_str());
 	return nullptr;
 }
 
@@ -257,7 +257,7 @@ inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPUR
 				}
 
 				SDL_DrawGPUIndexedPrimitivesIndirect(rp,
-					bm->_GetGPUBufferForFrame(bm->GetBufferData(DEFAULT_INDIRECT_BUFFER), render_frame),
+					bm->_GetGPUBufferForFrame(bm->GetBufferData(DefaultBuffersNames::DEFAULT_INDIRECT_BUFFER), render_frame),
 					safe_u32(additional_offset +
 						texture_batch.indirect_command_index * sizeof(SDL_GPUIndexedIndirectDrawCommand)),
 					safe_u32(texture_batch.model_batches.size())

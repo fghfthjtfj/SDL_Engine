@@ -15,16 +15,6 @@ class MaterialManager;
 class PipeManager;
 class ObjectManager;
 
-inline constexpr const char* DEPTH_PASS = "_DefaultDepthRenderPass";
-inline constexpr const char* MAIN_PASS = "_DefaultMainRenderPass";
-inline constexpr const char* SHADOW_PASS = "_DefaultShadowRenderPass";
-inline constexpr const char* CULLING_PREPASS = "_DefaultCullingComputePass";
-inline constexpr const char* CULLING_ZEROS_PREPASS = "_DefaultCullingZerosComputePass";
-inline constexpr const char* CULLING_OFFSET_PREPASS = "_DefaultCullingOffsetComputePass";
-inline constexpr const char* CULLING_OUT_INDIRECT_PREPASS = "_DefaultCullingOutIndirectComputePass";
-inline constexpr const char* CULLING_WRITE_PASS = "_DefaultCullingWritePass";
-inline constexpr const char* SHADOW_BLUR_PASS = "_DefaultBlurPass";
-
 class PassManager
 {
 public:

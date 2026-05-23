@@ -137,9 +137,12 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
             }
             Material* material = matComp.materials[submesh.material_index];
 
-            // ƒл€ каждого шейдера материала (обычно 1Ц2)
             for (ShaderProgram* sp : material->shader_programs)
             {
+                if (!sp) {
+                    SDL_Log("BatchBuilder::Using non existing shader program in material");
+                    continue;
+                }
                 RenderPassStep* rp = sp->spd->associated_render_pass;
                 if (!rp) continue;
 

@@ -14,6 +14,7 @@ namespace DefaultShaderProgramSet
     // Render shader programs
     void SetMainShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm);
     void SetDefaultShadowShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm);
+    void SetTransparentShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm);
 
     // Compute shader programs
     void SetCullingZerosPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm);

@@ -46,6 +46,8 @@ void LightDataModule::StoreLightData(BufferManager* bm, UploadTask* task, Object
             Positions& P = pos_el.container();
             size_t i = pos_el.i();
 
+            light.light_data.ResolveDistance();
+
 			LightLayout light_layout{};
 			light_layout.x = P.w[i];
 			light_layout.y = P.d[i];
@@ -59,18 +61,18 @@ void LightDataModule::StoreLightData(BufferManager* bm, UploadTask* task, Object
 			light_layout.g = light.light_data.g;
 			light_layout.b = light.light_data.b;
 			light_layout.power = light.light_data.power;
+            light_layout.max_range = light.light_data.GetMaxDistance();
+
             if (om->Has<ShadowCasterComponent>(scene, e)) {
                 light_layout.type = LightTypes::SPOT;
                 light_layout.offset = offset;
 				light_layout.padding = 0;
-				light_layout.padding2 = 0;
                 offset += spot_light_cameras;
             }
             else {
                 light_layout.type = LightTypes::SPOT;
                 light_layout.offset = no_camera;
-				light_layout.padding = 0;
-                light_layout.padding2 = 0;
+                light_layout.padding = 0;
             };
 			bm->UploadToTransferBuffer(task, sizeof(LightLayout), &light_layout);
         });
@@ -80,6 +82,8 @@ void LightDataModule::StoreLightData(BufferManager* bm, UploadTask* task, Object
         [&](Entity e, SoAElement<Positions> pos_el, SphereLightComponent& light) {
             Positions& P = pos_el.container();
             size_t i = pos_el.i();
+
+            light.light_data.ResolveDistance();
 
 			LightLayout light_layout{};
 			light_layout.x = P.w[i];
@@ -94,18 +98,18 @@ void LightDataModule::StoreLightData(BufferManager* bm, UploadTask* task, Object
 			light_layout.g = light.light_data.g;
 			light_layout.b = light.light_data.b;
             light_layout.power = light.light_data.power;
+            light_layout.max_range = light.light_data.GetMaxDistance();
+
             if (om->Has<ShadowCasterComponent>(scene, e)) {
                 light_layout.type = LightTypes::SPHERE;
                 light_layout.offset = offset;
-				light_layout.padding = 0;
-                light_layout.padding2 = 0;
+                light_layout.padding = 0;
                 offset += sphere_light_cameras;
             }
             else {
                 light_layout.type = LightTypes::SPHERE;
                 light_layout.offset = no_camera;
                 light_layout.padding = 0;
-                light_layout.padding2 = 0;
 			};
 			bm->UploadToTransferBuffer(task, sizeof(LightLayout), &light_layout);
         });
@@ -149,7 +153,7 @@ inline void StoreSpotLightCamera(BufferManager* bm, UploadTask* task, Positions&
 
     float fov = 2.0f * std::atan(light.source_angle);
     glm::mat4 proj = glm::perspectiveZO(
-        fov, 1.0f, 0.3f, 100.0f);
+        fov, 1.0f, 0.3f, light.GetMaxDistance());
 
     LightCamera lc{};
     lc.view = view;
@@ -165,19 +169,19 @@ static const glm::vec3 cubeDirs[6] = {
 };
 // Выводится из Vulkan spec cubemap UV convention
 static const glm::vec3 cubeUps[6] = {
-    { 0, -1,  0},  // +X: cam_x=-rz, cam_y=-ry ✓
-    { 0, -1,  0},  // -X: cam_x=+rz, cam_y=-ry ✓
+    { 0, 1,  0},  // +X: cam_x=-rz, cam_y=-ry ✓
+    { 0, 1,  0},  // -X: cam_x=+rz, cam_y=-ry ✓
     { 0,  0,  1},  // +Y: cam_x=+rx, cam_y=+rz ✓
     { 0,  0, -1},  // -Y: cam_x=+rx, cam_y=-rz ✓
-    { 0, -1,  0},  // +Z: cam_x=+rx, cam_y=-ry ✓
-    { 0, -1,  0},  // -Z: cam_x=-rx, cam_y=-ry ✓
+    { 0, 1,  0},  // +Z: cam_x=+rx, cam_y=-ry ✓
+    { 0, 1,  0},  // -Z: cam_x=-rx, cam_y=-ry ✓
 };
 
 
-inline void StoreSphereLightCameras(BufferManager* bm, UploadTask* task, Positions& P, size_t i) {
+inline void StoreSphereLightCameras(BufferManager* bm, UploadTask* task, Positions& P, size_t i, SphereLightComponent::SphereLightData& light) {
 	glm::vec3 position = glm::vec3(P.w[i], P.d[i], P.h[i]);
     glm::mat4 proj = glm::perspectiveZO(
-		glm::radians(90.0f), 1.0f, 1.3f, 50.0f);
+		glm::radians(90.0f), 1.0f, 0.02f, light.GetMaxDistance());
     for (int face = 0; face < 6; ++face)
     {
         glm::mat4 view = glm::lookAt(
@@ -198,10 +202,10 @@ void LightDataModule::StoreLightCameras(BufferManager* bm, UploadTask* task, Obj
 			StoreSpotLightCamera(bm, task, P, i, light.light_data);
 	});
     om->ForEach<Positions, SphereLightComponent, ShadowCasterComponent>(scene,
-        [&](SoAElement<Positions> pos_el, SphereLightComponent, ShadowCasterComponent) {
+        [&](SoAElement<Positions> pos_el, SphereLightComponent& light, ShadowCasterComponent) {
             Positions& P = pos_el.container();
             size_t i = pos_el.i();
-            StoreSphereLightCameras(bm, task, P, i);
+            StoreSphereLightCameras(bm, task, P, i, light.light_data);
 	});
 }
 

@@ -30,6 +30,10 @@ Material* MaterialManager::CreateMaterial(std::string name, std::initializer_lis
 	}
 
 	for (auto shader_program : shader_programs) {
+		if (!shader_program) {
+			SDL_Log("MaterialManager::Creating material with non existing shader program");
+			continue;
+		}
 		// ѕровер€ем что все required_slots покрыты переданными textures
 		for (const auto& required_role : shader_program->required_slots) {
 			bool found = false;

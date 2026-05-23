@@ -96,6 +96,9 @@ void ShaderManager::ReadVertexAttributes(
         attr.offset = safe_u32(offset);
         offset += elem_size;
         attributes.push_back(attr);
+        for (const auto& a : attributes)
+            SDL_Log("vattr loc=%u fmt=%d offset=%u", a.location, (int)a.format, a.offset);
+        SDL_Log("pitch=%u", vb.pitch);
     }
 
     SDL_zero(vb);

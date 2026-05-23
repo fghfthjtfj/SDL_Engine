@@ -17,6 +17,7 @@ set(MANAGERS_SRC
     src/RenderManager.cpp
     src/ShaderManager.cpp
     src/ShaderManager_ShadersCreate.cpp
+    src/ShaderManager_SPVLoad.cpp
     src/TextureManager.cpp
     src/ThreadController.cpp
     src/SlotController.cpp

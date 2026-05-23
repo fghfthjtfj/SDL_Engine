@@ -44,7 +44,7 @@ struct LightCamera
 };
 
 StructuredBuffer<LightCamera> LightCameras : register(t3, space0);
-
+static const float NORMAL_BIAS = 0.005;
 VSOutput main(VSInput input)
 {
     VSOutput output;
@@ -61,22 +61,26 @@ VSOutput main(VSInput input)
     float3 worldTangent   = normalize(mul(normalMatrix, input.a_tangent));
     float3 worldBitangent = normalize(cross(worldNormal, worldTangent));
 
-    output.position = mul(proj, mul(view, worldPos));
+    output.position      = mul(proj, mul(view, worldPos));   // реальная позиция — БЕЗ сдвига
+    output.v_worldPos    = worldPos.xyz;                     // освещение тоже из настоящей точки
+    output.v_worldNormal = worldNormal;
 
     output.v_uv           = input.a_uv;
-    output.v_worldPos     = worldPos.xyz;
-    output.v_worldNormal  = worldNormal;
+
     output.v_worldTangent = worldTangent;
     output.v_worldBitangent = worldBitangent;
 
     // HLSL не поддерживает массивы в выходных структурах с динамическим индексом,
     // поэтому разворачиваем цикл вручную
-    output.v_lightSpacePos0 = mul(LightCameras[0].proj, mul(LightCameras[0].view, worldPos));
-    output.v_lightSpacePos1 = mul(LightCameras[1].proj, mul(LightCameras[1].view, worldPos));
-    output.v_lightSpacePos2 = mul(LightCameras[2].proj, mul(LightCameras[2].view, worldPos));
-    output.v_lightSpacePos3 = mul(LightCameras[3].proj, mul(LightCameras[3].view, worldPos));
-    output.v_lightSpacePos4 = mul(LightCameras[4].proj, mul(LightCameras[4].view, worldPos));
-    output.v_lightSpacePos5 = mul(LightCameras[5].proj, mul(LightCameras[5].view, worldPos));
+    float4 shadowPos = float4(worldPos.xyz + worldNormal * NORMAL_BIAS, 1.0);
+
+    output.v_lightSpacePos0 = mul(LightCameras[0].proj, mul(LightCameras[0].view, shadowPos));
+    output.v_lightSpacePos1 = mul(LightCameras[1].proj, mul(LightCameras[1].view, shadowPos));
+    output.v_lightSpacePos2 = mul(LightCameras[2].proj, mul(LightCameras[2].view, shadowPos));
+    output.v_lightSpacePos3 = mul(LightCameras[3].proj, mul(LightCameras[3].view, shadowPos));
+    output.v_lightSpacePos4 = mul(LightCameras[4].proj, mul(LightCameras[4].view, shadowPos));
+    output.v_lightSpacePos5 = mul(LightCameras[5].proj, mul(LightCameras[5].view, shadowPos));
+
 
     return output;
 }

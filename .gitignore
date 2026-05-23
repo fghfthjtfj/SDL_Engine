@@ -2,4 +2,5 @@ build
 commands.txt
 src/engine/shaders/
 scripts/model_loader/raw/*
+scripts/model_loader/venv
 !scripts/model_loader/raw/.gitkeep

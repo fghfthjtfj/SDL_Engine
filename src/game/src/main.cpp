@@ -18,7 +18,7 @@ int main() {
         SDL_GPU_SHADERFORMAT_MSL,
         true, nullptr);
     SDL_ClaimWindowForGPUDevice(dev, win);
-    SDL_SetGPUAllowedFramesInFlight(dev, BUFFERING_LEVEL); // тройная буферизация
+    SDL_SetGPUAllowedFramesInFlight(dev, BUFFERING_LEVEL);
 
     // === Настройка swapchain ===
     SDL_GPUPresentMode desired_mode = SDL_GPU_PRESENTMODE_IMMEDIATE;

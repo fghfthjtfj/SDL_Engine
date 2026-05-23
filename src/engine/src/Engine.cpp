@@ -486,7 +486,7 @@ bool Engine::RenderFunc(uint8_t slot)
 		return false;
 	}
 
-	pass_manager->GetRenderPassStep(MAIN_PASS)->renderPassTexsData.SetColorTexture(tex);
+	pass_manager->GetRenderPassStep(DefaultRenderPassNamespace::MAIN_PASS)->renderPassTexsData.SetColorTexture(tex);
 	pass_manager->SetRenderFrame(slot);
 	pass_manager->ExecutePassesSteps(cb, slot);
 
@@ -558,7 +558,7 @@ void Engine::OnWindowResized(Sint32 w, Sint32 h)
 	//texture_manager->DeleteTexture(texture_manager->main_pass_depth_texture);
 	texture_manager->main_pass_depth_texture = new_depth_texture;
 
-	pass_manager->GetRenderPassStep(MAIN_PASS)->renderPassTexsData.SetDepthTexture(texture_manager->main_pass_depth_texture);
+	pass_manager->GetRenderPassStep(DefaultRenderPassNamespace::MAIN_PASS)->renderPassTexsData.SetDepthTexture(texture_manager->main_pass_depth_texture);
 }
 
 Engine::Engine(SDL_Window* window, SDL_GPUDevice* dev, float width, float height)
@@ -646,9 +646,11 @@ void Engine::InitPasses()
 	//SetDefaultCullingOutIndirectPass(pass_manager, buffer_manager);
 
 	SetDefaultShadowPCFRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
-	//SetDefaultShadowVSMRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
-	SetDefaultShadowBlurPass(pass_manager, buffer_manager); // ДЛЯ VSM
+	//SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager, dev, win);
 	SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager);
+	//SetDefaultShadowVSMRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
+	//SetDefaultShadowBlurPass(pass_manager, buffer_manager); // ДЛЯ VSM
+	//SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager);
 
 	//SetDefaultCullingOffstPass(pass_manager, buffer_manager);
 	//SetDefaultCullingOutTransformPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);

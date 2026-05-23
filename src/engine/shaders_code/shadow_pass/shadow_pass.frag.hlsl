@@ -1,5 +1,4 @@
-float2 main(float4 sv_pos : SV_Position) : SV_Target0
-{
-    float d = sv_pos.z;
-    return float2(d, d * d);
+void main(float4 sv_pos : SV_Position) {
+    // pipeline сам запишет sv_pos.z в depth target,
+    // никаких color outputs не нужно
 }

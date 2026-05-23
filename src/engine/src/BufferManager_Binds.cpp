@@ -3,7 +3,7 @@
 
 void BufferManager::BindGPUIndexBuffer(SDL_GPURenderPass* rp, Uint32 offset)
 {
-    BufferData* data = GetBufferData(DEFAULT_INDEX_BUFFER);
+    BufferData* data = GetBufferData(DefaultBuffersNames::DEFAULT_INDEX_BUFFER);
     if (!data) {
         SDL_Log("BindGPUIndexBuffer::Index buffer 'DefaultIndexBuffer' not found");
         return;
@@ -29,7 +29,7 @@ void BufferManager::BindGPUIndexBuffer(SDL_GPURenderPass* rp, Uint32 offset)
 
 void BufferManager::BindGPUVertexBuffer(SDL_GPURenderPass* rp, Uint32 offset, Uint32 slot)
 {
-    BufferData* data = GetBufferData(DEFAULT_VERTEX_BUFFER);
+    BufferData* data = GetBufferData(DefaultBuffersNames::DEFAULT_VERTEX_BUFFER);
     if (!data) {
         SDL_Log("BindGPUVertexBuffer::Vertex buffer 'DefaultVertexBuffer' not found");
         return;

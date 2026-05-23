@@ -5,6 +5,7 @@
 #include "finders_interface.h"
 
 TextureManager::TextureManager(SDL_GPUDevice* device): ResourceManager(device){
+    using namespace DefaultSamplersNames;
     CreateSampler(DEFAULT_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::DEFAULT_SAMPLER));
     CreateSampler(DEFAULT_SHADOW_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::SHADOW_SAMPLER));
 	CreateSampler(VSM_SAMPLER, SamplerPresets::GetSamplerCreateInfo(SamplerPreset::VSM_SAMPLER));

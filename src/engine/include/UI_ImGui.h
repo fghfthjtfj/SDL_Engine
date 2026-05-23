@@ -11,4 +11,5 @@ public:
 private:
     static void DrawCameraPanel(CameraManager* cameraManager);
     static void DrawObjectsPanel(ObjectManager* objectManager);
+    static void DrawLightsPanel(ObjectManager* objectManager);
 };

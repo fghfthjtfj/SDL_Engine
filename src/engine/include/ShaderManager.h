@@ -35,6 +35,11 @@ public:
 		std::initializer_list<TextureAtlas*> texture_samplers,
 		ComputePassStep* associated_compute_pass);
 
+
+	VertexShaderData CreateVertexShaderFromSPV(const char* spv_path);
+	FragmentShaderData CreateFragmentShaderFromSPV(const char* spv_path);
+	ComputeShaderData CreateComputeShaderFromSPV(const char* spv_path);
+
 	ShaderProgramDescription* GetShaderProgramDescription(const std::string& name);
 	ShaderProgram* GetShaderProgram(const std::string& name);
 
@@ -52,8 +57,10 @@ public:
 
 private:
 	std::string BuildCachePath(const char* source_path, uint64_t hash) const;
+	void ReadVertexAttributes(const Uint8* shader_code, size_t shader_size, SDL_GPUVertexBufferDescription& vb, std::vector<SDL_GPUVertexAttribute>& attributes);
 	void ReadVertexAttributes(const SDL_ShaderCross_GraphicsShaderMetadata* metadata, SDL_GPUVertexBufferDescription& vb, std::vector<SDL_GPUVertexAttribute>& attributes);
 	Uint8* LoadOrCompileSPIRV(const char* hlsl_path, SDL_ShaderCross_ShaderStage stage, size_t& out_size);
+	ShaderData CreateShaderFromSPV(const char* path, SDL_GPUShaderStage stage);
 
 	std::string m_cacheBasePath;
 

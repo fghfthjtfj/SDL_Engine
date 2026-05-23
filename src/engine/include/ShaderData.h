@@ -71,7 +71,6 @@ struct RasterizerStateBiasParams {
 
 struct ShaderProgramDescription
 {
-    // --- Внутреннее состояние, юзер обычно сюда не лезет ---
     RenderPassStep* associated_render_pass = nullptr;
     SDL_GPUCullMode           cull_mode = SDL_GPU_CULLMODE_NONE;
     RasterizerStateBiasParams rasterizer_bias;
@@ -80,19 +79,15 @@ struct ShaderProgramDescription
     bool                      stencil_test = false;
     bool                      color_blend = false;
 
-    // === Привязка к рендер-пассу ===
-    ShaderProgramDescription* UsedInRenderPass(RenderPassStep* p) { associated_render_pass = p; return this; }
+    ShaderProgramDescription* UsedInRenderPass(RenderPassStep* p);
 
-    // === Пресеты поведения (описывают РОЛЬ шейдера) ===
-    // Каждый пресет настраивает сразу несколько полей под типовой сценарий.
     ShaderProgramDescription* BehavesAsShadowCaster();
     ShaderProgramDescription* BehavesAsOpaqueGeometry();
     ShaderProgramDescription* BehavesAsTransparentGeometry();
     ShaderProgramDescription* BehavesAsDepthPrepass();
-    ShaderProgramDescription* BehavesAsFullscreenEffect();   // post-process, sky и т.п.
+    ShaderProgramDescription* BehavesAsFullscreenEffect();
     ShaderProgramDescription* BehavesAsUIOverlay();
 
-    // === Точечные уточнения, если пресет почти подходит ===
     ShaderProgramDescription* WithBlending() { color_blend = true;  return this; }
     ShaderProgramDescription* WithoutBlending() { color_blend = false; return this; }
     ShaderProgramDescription* IgnoresDepth() { depth_test = false; depth_write = false; return this; }

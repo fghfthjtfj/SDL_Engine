@@ -144,10 +144,20 @@ ShaderManager::~ShaderManager()
 	SDL_ShaderCross_Quit();
 }
 
+ShaderProgramDescription* ShaderProgramDescription::UsedInRenderPass(RenderPassStep* p)
+{
+    if (!p) {
+        SDL_Log("ShaderManager::Creating shader program description with non existing pass");
+        assert(p != nullptr && "ShaderProgramDescription::UsedInRenderPass: passed nullptr RenderPassStep");
+    }
+    this->associated_render_pass = p;
+    return this;
+}
+
 ShaderProgramDescription* ShaderProgramDescription::BehavesAsShadowCaster() {
     depth_test = true;  depth_write = true;  stencil_test = false;
     color_blend = false;
-    cull_mode = SDL_GPU_CULLMODE_NONE;  // классика для shadow acne
+    cull_mode = SDL_GPU_CULLMODE_NONE;
     return this;
 }
 ShaderProgramDescription* ShaderProgramDescription::BehavesAsOpaqueGeometry() {
@@ -157,7 +167,7 @@ ShaderProgramDescription* ShaderProgramDescription::BehavesAsOpaqueGeometry() {
     return this;
 }
 ShaderProgramDescription* ShaderProgramDescription::BehavesAsTransparentGeometry() {
-    depth_test = true;  depth_write = false;       // ключевое: не пишем depth
+    depth_test = true;  depth_write = false;
     color_blend = true;
     cull_mode = SDL_GPU_CULLMODE_NONE;
     return this;

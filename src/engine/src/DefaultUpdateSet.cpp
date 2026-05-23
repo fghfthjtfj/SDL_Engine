@@ -24,6 +24,8 @@ namespace DefaultUpdateSet
     bool bound_sphere_update_intited = false;
 }
 
+using namespace DefaultBuffersNames;
+
 void DefaultUpdateSet::SetDefaultCameraUpdater(BufferManager* bm, CameraManager* cm)
 {
     if (camera_update_inited) {
