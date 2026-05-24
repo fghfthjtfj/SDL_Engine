@@ -1,4 +1,9 @@
-void main(float4 sv_pos : SV_Position) {
-    // pipeline сам запишет sv_pos.z в depth target,
-    // никаких color outputs не нужно
+cbuffer CurrentCameraUBO : register(b0, space3) {
+    int   currentCameraIndex;
+    float currentFarRange;
+};
+
+float main(float3 viewPosWS : TEXCOORD0) : SV_Depth
+{
+    return length(viewPosWS) / currentFarRange;
 }

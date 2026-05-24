@@ -39,6 +39,7 @@ private:
 
 	LightDataModule* light_data_module;
 
+	EngineContext* ctx;
 	void ChangeState(GameState newState);
 	void MainMenu_Init();
 	void MainMenu_Iterate();

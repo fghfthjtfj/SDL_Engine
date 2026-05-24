@@ -25,6 +25,8 @@ Game::Game(Engine* engine)
 
 	width = engine->GetWidth();
 	height = engine->GetHeight();
+
+	ctx = engine->GetEngineContext();
 }
 
 SDL_AppResult Game::MainInit()
@@ -38,58 +40,49 @@ SDL_AppResult Game::MainInit()
         glm::vec3(0.43f, -0.4f, -0.8f), // точка взгляда
         glm::vec3(0.0f, 1.0f, 0.0f)  // вектор вверх
     );
-    
-	SDL_GPUSampler* sampler = textureManager->GetSampler(DefaultSamplersNames::DEFAULT_SAMPLER);
-	using namespace TexturePresets;
 
-	TextureAtlas* atlas = textureManager->CreateTextureAtlas("albedo_atlas", TexturePresets::GetCreateInfo(TexturePreset::Albedo_Atlas2048_1Layer), sampler);
-    TextureAtlas* NAOPBR_atlas = textureManager->CreateTextureAtlas("NAOPBR_atlas", TexturePresets::GetCreateInfo(TexturePreset::NAOPBR_Atlas2048_1Layer), sampler);
+    TextureAtlas* atlas = ctx->CreateTextureAtlas("albedo_atlas", TexturePresets::GetCreateInfo(TexturePreset::Albedo_Atlas2048_1Layer), DefaultSamplersNames::DEFAULT_SAMPLER);
+	TextureAtlas* NAOPBR_atlas = ctx->CreateTextureAtlas("NAOPBR_atlas", TexturePresets::GetCreateInfo(TexturePreset::NAOPBR_Atlas2048_1Layer), DefaultSamplersNames::DEFAULT_SAMPLER);
 
-    TextureHandle* texture_cube = textureManager->CreateTextureFromFile("albedo_cube", atlas, "textures/assets/cube_test.png");
-	TextureHandle* texture_car_blue = textureManager->CreateTextureFromFile("albedo_blue", atlas, "textures/assets/car_snow_blue.png");
-	TextureHandle* norm = textureManager->CreateTextureFromFile("new_car_normal", NAOPBR_atlas, "textures/assets/car_norm.png");
+	TextureHandle* texture_cube = ctx->CreateTextureFromFile("albedo_cube", "albedo_atlas", "textures/assets/cube_test.png");
+	TextureHandle* norm = ctx->CreateTextureFromFile("norm", "NAOPBR_atlas", "textures/assets/car_norm.png");
 
-    TextureHandle* texture_car = textureManager->CreateTextureFromFile("new_car", atlas, "textures/assets/new_car.png");
-    TextureHandle* ground = textureManager->CreateTextureFromFile("new_car_ground", atlas, "textures/assets/new_car_ground.png");
-    TextureHandle* glass = textureManager->CreateTextureFromFile("new_car_glass", atlas, "textures/assets/new_car_glass.png");
+    TextureHandle* texture_car = ctx->CreateTextureFromFile("new_car", "albedo_atlas", "textures/assets/new_car.png");
+	TextureHandle* ground = ctx->CreateTextureFromFile("new_car_ground", "albedo_atlas", "textures/assets/new_car_ground.png");
+	TextureHandle* glass = ctx->CreateTextureFromFile("new_car_glass", "albedo_atlas", "textures/assets/new_car_glass.png");
 
     using namespace DefaultShaderProgramSet;
     SetMainShaderProgram(bufferManager, shaderManager, passManager);
     SetDefaultShadowShaderProgram(bufferManager, shaderManager, passManager);
-    //SetShadowBlurPrograms(bufferManager, shaderManager, passManager, textureManager, objectManager, light_data_module);
+    
+    auto material_car = ctx->CreateMaterial("car", {
+        {TextureSlotRole::Albedo, "new_car"},
+        {TextureSlotRole::Normal, "norm"} },
+        { "sp", "sp_shadow" });
+	auto material_car2 = ctx->CreateMaterial("car2", {
+        {TextureSlotRole::Albedo, "new_car"},
+        {TextureSlotRole::Normal, "norm"} },
+		{ "sp", "sp_shadow" });
+    auto material_ground = ctx->CreateMaterial("ground", {
+        {TextureSlotRole::Albedo, "new_car_ground"},
+        {TextureSlotRole::Normal, "norm"} },
+		{ "sp", "sp_shadow" });
+    auto material_glass = ctx->CreateMaterial("glass", {
+        {TextureSlotRole::Albedo, "new_car_glass"},
+        {TextureSlotRole::Normal, "norm"} },
+		{ "sp", "sp_shadow" });
 
-    auto material_car = materialManager->CreateMaterial("car", {
-        { TextureSlotRole::Albedo, texture_car },
-        { TextureSlotRole::Normal, norm }
-        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
-    auto material_car2 = materialManager->CreateMaterial("car2", {
-        { TextureSlotRole::Albedo, texture_car },
-        { TextureSlotRole::Normal, norm }
-        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow") });
-    auto material_ground = materialManager->CreateMaterial("glass", {
-        { TextureSlotRole::Albedo, glass },
-        { TextureSlotRole::Normal, norm }
-        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow")});
-    auto material_glass = materialManager->CreateMaterial("ground", {
-        { TextureSlotRole::Albedo, ground },
-        { TextureSlotRole::Normal, norm }
-        }, { shaderManager->GetShaderProgram("sp"), shaderManager->GetShaderProgram("sp_shadow")});
-  //  auto material_blue = materialManager->CreateMaterial("textured_sphere_material_blue", {
-  //      { TextureSlotRole::Albedo, texture_car_blue },
-		//{ TextureSlotRole::Normal, norm }
-		//}, { sp, sp_shadow });
-    //modelManager->CreateModel("car", "models/cube_1_v.bin", "models/cube_1_i.bin");
-    modelManager->CreateModel("car", "models/new_car_n_fixed.bin", "models/new_car_n_fixed_i.bin");
+    ModelData* model_car = ctx->CreateModel("car", "models/new_car_n_fixed.bin", "models/new_car_n_fixed_i.bin");
 
-    objectManager->CreateEntity("main_menu",
-        MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
-        ModelComponent{ (*modelManager)["car"] },
+    ctx->CreateEntity("main_menu",
+        MaterialComponent{ {material_car, material_car2, material_glass, material_ground} },
+        ModelComponent{ model_car },
         PositionProxy16{ 1,0,0,3,  0,1,0,0,  0,0,1,0,  0,0,0,1 },
         ShadowComponent{}
     );
-    objectManager->CreateEntity("main_menu",
-        MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
-        ModelComponent{ (*modelManager)["car"] },
+    ctx->CreateEntity("main_menu",
+        MaterialComponent{ {material_car, material_car2, material_glass, material_ground} },
+        ModelComponent{ model_car },
         PositionProxy16{
             -1, 0,  0, 0.5,     // X basis = (-1, 0, 0)
              0, 1,  0, 0.0,
@@ -97,9 +90,9 @@ SDL_AppResult Game::MainInit()
              0, 0,  0, 1.0
         }, ShadowComponent{}
     );
-    objectManager->CreateEntity("main_menu",
-        MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
-        ModelComponent{ (*modelManager)["car"] },
+    ctx->CreateEntity("main_menu",
+        MaterialComponent{ {material_car, material_car2, material_glass, material_ground} },
+        ModelComponent{ model_car },
         PositionProxy16{
             -1, 0,  0, 0.5f,     // X basis = (-1, 0, 0)
              0, 1,  0, 0.0f,
@@ -107,9 +100,9 @@ SDL_AppResult Game::MainInit()
              0, 0,  0, 1.0f
         }, ShadowComponent{}
     );
-    Entity parent_id = objectManager->CreateEntity("main_menu",
-        MaterialComponent{ {material_car, material_car2, material_ground, material_glass} },
-        ModelComponent{ (*modelManager)["car"] },
+    Entity parent_id = ctx->CreateEntity("main_menu",
+        MaterialComponent{ {material_car, material_car2, material_glass, material_ground} },
+        ModelComponent{ model_car },
         PositionProxy16{ 1,0,0,3,  0,1,0,0,  0,0,1,2.5f,  0,0,0,1 },
         ShadowComponent{}
     );
@@ -118,8 +111,8 @@ SDL_AppResult Game::MainInit()
     //    PositionProxy16{ 1,0,0,-2.5f,  0,1,0,0,  0,0, 1,1.25f,  0,0,0,1 },
     //    ShadowCasterComponent{}
     //);
-    objectManager->CreateEntity("main_menu",
-        SphereLightComponent{ SphereLightComponent::SphereLightData{ 0.0125f, 1.0f, 1.0f, 1.0f, 11.0f, 200.0f } },
+    ctx->CreateEntity("main_menu",
+        SphereLightComponent{ SphereLightComponent::SphereLightData{ 0.0125f, 1.0f, 1.0f, 1.0f, 5.0f, 20.0f } },
         PositionProxy16{ 1,0,0, 0.0f,  0,1,0,0,  0,0, 1,1.25f,  0,0,0,1 },
         ShadowCasterComponent{}
     );

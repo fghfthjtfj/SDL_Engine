@@ -12,6 +12,9 @@ class BufferManager;
 class PipeManager;
 struct RenderBatchData;
 
+template<typename T, typename... Ts>
+constexpr bool contains_type_v = (std::is_same_v<T, std::decay_t<Ts>> || ...);
+
 template<typename SoA>
 struct SoAElement {
     SoA* soa = nullptr;
@@ -48,6 +51,7 @@ public:
     SceneData* CreateScene(const SceneName& name);
 	void SetSceneState(const SceneName& scene_name, bool is_active);
     SceneData* GetActiveScene();
+    SceneData* GetScene(const SceneName& name);
     bool CheckNewObjects() { return dirty_entity; };
 	void NewObjectsCommit() { dirty_entity = false; };
 

@@ -40,3 +40,15 @@ SceneData* ObjectManager::GetActiveScene()
     SDL_Log("No active scene found!");
     return nullptr; // не найдено
 }
+
+SceneData* ObjectManager::GetScene(const SceneName& name)
+{
+    auto it = scenes_data.find(name);
+    if (it != scenes_data.end()) {
+        return it->second.get();
+    }
+    else {
+        SDL_Log("Scene '%s' not found!", name.c_str());
+        return nullptr;
+	}
+}

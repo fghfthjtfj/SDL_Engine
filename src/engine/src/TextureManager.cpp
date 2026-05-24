@@ -71,8 +71,8 @@ TextureHandle* TextureManager::CreateTextureFromFile(const std::string& name, co
         SDL_Log("Texture atlas '%s' not found for texture '%s'", atlas_name.c_str(), name.c_str());
         return nullptr;
 	}
-
-
+	TextureAtlas* atlas = atlas_it->second.get();
+	return CreateTextureFromFile(name, atlas, path);
 }
 
 TextureHandle* TextureManager::CreateTextureFromFile(const std::string& name, TextureAtlas* atlas, const char* path)

@@ -1,13 +1,9 @@
 #ifndef SHADOW_PCF_HLSL
 #define SHADOW_PCF_HLSL
 
-// ─── Configuration ──────────────────────────────────────────────────────────
-
-static const float SHADOW_BIAS   = 0.0005;  // дополнение к slope-scaled bias из rasterizer
 static const int   PCF_TAPS      = 16;
-static const float PCF_RADIUS_TX = 1.5;     // радиус кернела в текселях shadow map
+static const float PCF_RADIUS_TX = 1.5;
 
-// 16-точечный Poisson disk, нормирован в [-1, 1]
 static const float2 PoissonDisk16[16] = {
     float2( 0.94558609, -0.76890725), float2(-0.09418410, -0.92938870),
     float2( 0.34495938,  0.29387760), float2(-0.91588581,  0.45771432),
@@ -19,13 +15,10 @@ static const float2 PoissonDisk16[16] = {
     float2( 0.14383161, -0.14100790), float2(-0.41435000,  0.50098030)
 };
 
-// Interleaved Gradient Noise — детерминированный per-pixel шум для поворота кернела
 float ign(float2 pixel)
 {
     return frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715))));
 }
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 int getCubeFace(float3 dir)
 {
@@ -35,14 +28,10 @@ int getCubeFace(float3 dir)
     return dir.z > 0.0 ? 4 : 5;
 }
 
-// ─── PCF ────────────────────────────────────────────────────────────────────
 float2 computeReceiverPlaneDepthBias(float3 shadowUVZ)
 {
-    // Производные UV-координат теневой карты и depth-а по экранным осям
     float3 dx = ddx(shadowUVZ);
     float3 dy = ddy(shadowUVZ);
-
-    // Решаем систему: при смещении на (du, dv) в shadow space, насколько меняется z
     float2 bias;
     float det = dx.x * dy.y - dx.y * dy.x;
     if (abs(det) < 1e-7) return float2(0.0, 0.0);
@@ -55,6 +44,7 @@ float computeShadowPCF(
     Texture2DArray<float>  depthArray,
     SamplerComparisonState shadowSampler,
     float4                 lightSpacePos,
+    float                  compareDepth,
     int                    slot,
     float2                 pixelCoord)
 {
@@ -62,7 +52,7 @@ float computeShadowPCF(
 
     float3 ndc = lightSpacePos.xyz / lightSpacePos.w;
     float2 uv  = float2(ndc.x * 0.5 + 0.5, 1.0 - (ndc.y * 0.5 + 0.5));
-    float  z   = ndc.z;
+    float  z   = compareDepth;
 
     if (any(isnan(ndc)) || any(isinf(ndc)) ||
         uv.x < 0.0 || uv.x > 1.0 ||
@@ -70,15 +60,11 @@ float computeShadowPCF(
         z > 1.0)
         return 1.0;
 
-    // Per-pixel bias на основе градиента поверхности в shadow space
-    float2 rpdBias = computeReceiverPlaneDepthBias(float3(uv, z));
-
-    // Клампим чтобы не ушло в бесконечность на разрывах геометрии
-    float biasMagnitude = length(rpdBias);
+    float2 rpdBias      = computeReceiverPlaneDepthBias(float3(uv, z));
+    float  biasMagnitude = length(rpdBias);
     if (biasMagnitude > 0.01) rpdBias *= 0.01 / biasMagnitude;
 
-    // Минимальный фоновый bias на случай когда ddx/ddy нестабильны (силуэты)
-    static const float MIN_BIAS = 0.0001;
+    static const float MIN_BIAS = 0.001;
 
     float w, h, layers;
     depthArray.GetDimensions(w, h, layers);
@@ -90,19 +76,33 @@ float computeShadowPCF(
 
     float sum = 0.0;
     [unroll]
-    for (int i = 0; i < PCF_TAPS; ++i)
+    for (int j = 0; j < 4; ++j)
     {
-        float2 offset = mul(rot, PoissonDisk16[i]) * texelSize * PCF_RADIUS_TX;
-
-        // Корректируем z для этого тапа исходя из наклона поверхности
-        float zBiased = z + dot(offset, rpdBias) - MIN_BIAS;
-
+        float2 offset  = mul(rot, PoissonDisk16[j * 4]) * texelSize * PCF_RADIUS_TX;
+        float  zBiased = z + dot(offset, rpdBias) - MIN_BIAS;
         sum += depthArray.SampleCmpLevelZero(
             shadowSampler,
             float3(saturate(uv + offset), float(slot)),
-            zBiased
-        );
+            zBiased);
     }
+
+    float quick = sum * 0.25;
+    if (quick <= 0.001) return 0.0;
+    if (quick >= 0.999) return 1.0;
+
+    [unroll]
+    for (int i = 0; i < 16; ++i)
+    {
+        if (i == 0 || i == 4 || i == 8 || i == 12) continue; // уже посчитаны
+
+        float2 offset  = mul(rot, PoissonDisk16[i]) * texelSize * PCF_RADIUS_TX;
+        float  zBiased = z + dot(offset, rpdBias) - MIN_BIAS;
+        sum += depthArray.SampleCmpLevelZero(
+            shadowSampler,
+            float3(saturate(uv + offset), float(slot)),
+            zBiased);
+    }
+
     return sum / float(PCF_TAPS);
 }
 #endif

@@ -8,6 +8,7 @@
 #include "LightDataModule.h"
 #include "InderectDataModule.h"
 #include "BatchBuilder.h"
+#include "EngineContext.h"
 
 namespace DefaultRenderPassNamespace
 {
@@ -34,12 +35,17 @@ namespace DefaultRenderPassNamespace
 
 
 
-void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm, ObjectManager* om, BatchBuilder* bb)
+void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(EngineContext* ctx)
 {
     if (shadow_pass_inited) {
         SDL_Log("Default shadow render pass is already initialized.");
         return;
     }
+	TextureManager* tm = ctx->GetTextureManager();
+	PassManager* pm = ctx->GetRenderManager();
+	BufferManager* bm = ctx->GetBufferManager();
+	ObjectManager* om = ctx->GetObjectManager();
+
     auto shadow_sampler = tm->GetSampler(DefaultSamplersNames::DEFAULT_SHADOW_SAMPLER);
 
     shadow_depth_flat_array = tm->CreateTextureAtlas(SHADOW_DEPTH_FLAT_ARRAY, TexturePresets::GetCreateInfo(TexturePreset::Depth_FlatArray2048_8Layers), shadow_sampler);
@@ -48,9 +54,9 @@ void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(PassManager* rm, 
     RenderPassTexturesInfo shadow_rptd{};
     shadow_rptd.CreateDepthTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_STORE, shadow_depth_flat_array->format);
 
-    auto shadowPass = rm->CreateRenderPass(
+    auto shadowPass = pm->CreateRenderPass(
         SHADOW_PASS,
-        [rm, bm, om, tm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
+        [pm, bm, om, tm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
         Uint32 cameraIndex = 0;      // îáùèé äëÿ âñåõ òèïîâ ñâåòà
         Uint32 sphereLayer = 0;      // òîëüêî äëÿ sphere
@@ -67,7 +73,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(PassManager* rm, 
                 push_data.max_range = light.light_data.GetMaxDistance();
                 SDL_PushGPUVertexUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
 				SDL_PushGPUFragmentUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
-                rm->RenderPassStandardBody(cb, &rp, bm, 0);
+                pm->RenderPassStandardBody(cb, &rp, bm, 0);
 
                 auto cp = SDL_BeginGPUCopyPass(cb);
                 SDL_GPUTextureLocation src = {
@@ -95,7 +101,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(PassManager* rm, 
                     SDL_PushGPUVertexUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
                     SDL_PushGPUFragmentUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
 
-                    rm->RenderPassStandardBody(cb, &rp, bm, 0);
+                    pm->RenderPassStandardBody(cb, &rp, bm, 0);
 
                     auto cp = SDL_BeginGPUCopyPass(cb);
                     SDL_GPUTextureLocation src = {
@@ -124,7 +130,47 @@ void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(PassManager* rm, 
     shadow_pass_inited = true;
 }
 
-void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm,
+void DefaultRenderPassNamespace::SetDefaultMainRenderPass(EngineContext* ctx)
+{
+    if (main_pass_inited) {
+        SDL_Log("Default main render pass is already initialized.");
+        return;
+    }
+    if (!shadow_pass_inited) {
+        SDL_Log("Default shadow render pass must be initialized before the default main render pass.");
+        return;
+    }
+    TextureManager* tm = ctx->GetTextureManager();
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+
+    auto tci = TexturePresets::GetCreateInfo(TexturePreset::SingleDepth2048);
+    tci.width = 800;
+    tci.height = 600;
+    tm->main_pass_depth_texture = tm->CreateGPU_Texture(tci);
+
+    RenderPassTexturesInfo main_rptd{};
+    main_rptd.CreateColorTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_STORE, { 0.1f,0.1f,0.14f,1.0f }, SDL_GPU_TEXTUREFORMAT_INVALID);
+    main_rptd.CreateDepthTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_DONT_CARE, tci.format);
+
+    auto mainPass = pm->CreateRenderPass(
+        MAIN_PASS,
+        [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
+    {
+        pm->RenderPassStandardBody(cb, &rp, bm, 0);
+    },
+        std::move(main_rptd),
+        20
+    );
+
+
+    mainPass->global_texture_bindings = { shadow_depth_flat_array->texture_binding };
+    mainPass->renderPassTexsData.SetDepthTexture(tm->main_pass_depth_texture);
+
+    main_pass_inited = true;
+}
+
+void DefaultRenderPassNamespace::SetDefaultMainRenderPass(EngineContext* ctx,
     SDL_GPUDevice* dev, SDL_Window* win)
 {
     if (main_pass_inited) {
@@ -135,6 +181,9 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, Textu
         SDL_Log("Default shadow render pass must be initialized before the default main render pass.");
         return;
     }
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+	TextureManager* tm = ctx->GetTextureManager();
 
     const SDL_GPUTextureFormat sc_format = SDL_GetGPUSwapchainTextureFormat(dev, win);
 
@@ -166,11 +215,11 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, Textu
     scene_rptd.CreateColorTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_STORE, { 0.1f,0.1f,0.14f,1.0f }, sc_format);
     scene_rptd.CreateDepthTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_DONT_CARE, depth_ci.format);
 
-    auto scenePass = rm->CreateRenderPass(
+    auto scenePass = pm->CreateRenderPass(
         "SCENE_PASS",
-        [rm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
+        [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
-        rm->RenderPassStandardBody(cb, &rp, bm, 0);
+        pm->RenderPassStandardBody(cb, &rp, bm, 0);
     },
         std::move(scene_rptd),
         20
@@ -184,12 +233,12 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, Textu
     debug_rptd.CreateColorTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_STORE, { 0.14f,0.1f,0.1f,1.0f }, sc_format);
     debug_rptd.CreateDepthTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_DONT_CARE, depth_ci.format);
 
-    auto debugPass = rm->CreateRenderPass(
+    auto debugPass = pm->CreateRenderPass(
         "DEBUG_PASS",
-        [rm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
+        [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
         // ЗАТЫЧКА: пока та же сцена; сюда позже воткнёшь debug-пайплайн
-        rm->RenderPassStandardBody(cb, &rp, bm, 0);
+        pm->RenderPassStandardBody(cb, &rp, bm, 0);
     },
         std::move(debug_rptd),
         25
@@ -203,7 +252,7 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, Textu
     main_rptd.CreateColorTextureInfo(SDL_GPU_LOADOP_LOAD, SDL_GPU_STOREOP_STORE, { 0,0,0,1 }, SDL_GPU_TEXTUREFORMAT_INVALID);
     // depth не нужен — это copy, а не render pass
 
-    auto mainPass = rm->CreateRenderPass(
+    auto mainPass = pm->CreateRenderPass(
         MAIN_PASS,
         [](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
@@ -231,49 +280,18 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, Textu
 }
 
 
-void DefaultRenderPassNamespace::SetDefaultMainRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm)
-{
-    if (main_pass_inited) {
-        SDL_Log("Default main render pass is already initialized.");
-        return;
-	}
-    if (!shadow_pass_inited) {
-        SDL_Log("Default shadow render pass must be initialized before the default main render pass.");
-        return;
-	}
-
-    auto tci = TexturePresets::GetCreateInfo(TexturePreset::SingleDepth2048);
-    tci.width = 800;
-    tci.height = 600;
-    tm->main_pass_depth_texture = tm->CreateGPU_Texture(tci);
-
-	RenderPassTexturesInfo main_rptd{};
-	main_rptd.CreateColorTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_STORE, { 0.1f,0.1f,0.14f,1.0f }, SDL_GPU_TEXTUREFORMAT_INVALID);
-    main_rptd.CreateDepthTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_DONT_CARE, tci.format);
-
-    auto mainPass = rm->CreateRenderPass(
-        MAIN_PASS,
-        [rm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
-        {
-            rm->RenderPassStandardBody(cb, &rp, bm, 0);
-        },
-        std::move(main_rptd),
-        20
-	);
-
-
-    mainPass->global_texture_bindings = { shadow_depth_flat_array->texture_binding };
-    mainPass->renderPassTexsData.SetDepthTexture(tm->main_pass_depth_texture);
-
-	main_pass_inited = true;
-}
-
-void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(PassManager* rm, TextureManager* tm, BufferManager* bm, ObjectManager* om, BatchBuilder* bb)
+void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(EngineContext* ctx)
 {
     if (shadow_pass_inited) {
         SDL_Log("Default shadow render pass is already initialized.");
         return;
     }
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+	TextureManager* tm = ctx->GetTextureManager();
+	ObjectManager* om = ctx->GetObjectManager();
+	BatchBuilder* bb = ctx->GetBatchBuilder();
+
     auto shadow_sampler = tm->GetSampler(DefaultSamplersNames::VSM_SAMPLER);
     auto vsm_sampler = tm->GetSampler(DefaultSamplersNames::VSM_SAMPLER);
 
@@ -285,9 +303,9 @@ void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(PassManager* rm, 
     shadow_rptd.CreateDepthTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_DONT_CARE, shadow_depth_tex->format);
     shadow_rptd.CreateColorTextureInfo(SDL_GPU_LOADOP_CLEAR, SDL_GPU_STOREOP_STORE, { 1.0, 1.0, 1.0, 1.0 }, shadow_moments_array->format);
 
-    auto shadowPass = rm->CreateRenderPass(
+    auto shadowPass = pm->CreateRenderPass(
         SHADOW_PASS,
-        [rm, bm, om, tm, bb](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
+        [pm, bm, om, tm, bb](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
         Uint32 cameraIndex = 0;      // общий для всех типов света
         Uint32 sphereLayer = 0;      // только для sphere
@@ -301,7 +319,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(PassManager* rm, 
             if (light.needsUpdate) {
                 SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
                 rp.renderPassTexsData.colorTargetInfo.layer_or_depth_plane = cameraIndex;
-                rm->RenderPassStandardBody(cb, &rp, bm, 0);
+                pm->RenderPassStandardBody(cb, &rp, bm, 0);
             };
             cameraIndex++;
         }
@@ -315,7 +333,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(PassManager* rm, 
                     SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
 
                     rp.renderPassTexsData.colorTargetInfo.layer_or_depth_plane = cameraIndex;
-                    rm->RenderPassStandardBody(cb, &rp, bm, 0);
+                    pm->RenderPassStandardBody(cb, &rp, bm, 0);
                 }
                 cameraIndex++;
             }
@@ -336,8 +354,11 @@ void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(PassManager* rm, 
     shadow_pass_inited = true;
 }
 
-void DefaultRenderPassNamespace::SetDefaultShadowBlurPass(PassManager* pm, BufferManager* bm)
+void DefaultRenderPassNamespace::SetDefaultShadowBlurPass(EngineContext* ctx)
 {
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+
     pm->CreateComputePass(
         SHADOW_BLUR_PASS,
         [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame)
@@ -350,8 +371,11 @@ void DefaultRenderPassNamespace::SetDefaultShadowBlurPass(PassManager* pm, Buffe
     );
 }
 
-void DefaultRenderPassNamespace::SetDefaultCullingComputeZerosPass(PassManager* pm, BufferManager* bm)
+void DefaultRenderPassNamespace::SetDefaultCullingComputeZerosPass(EngineContext* ctx)
 {
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+
     auto compute_zeros_pass = pm->CreateComputePrepass(
         CULLING_ZEROS_PREPASS,
         [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame) 
@@ -362,8 +386,12 @@ void DefaultRenderPassNamespace::SetDefaultCullingComputeZerosPass(PassManager* 
     );
 }
 
-void DefaultRenderPassNamespace::SetDefaultCullingComputeCountPass(PassManager* pm, BufferManager* bm, ObjectManager* om, TransformDataModule* tdm, LightDataModule* ldm, InderectDataModule* idm)
+void DefaultRenderPassNamespace::SetDefaultCullingComputeCountPass(EngineContext* ctx, TransformDataModule* tdm, LightDataModule* ldm, InderectDataModule* idm)
 {
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+    ObjectManager* om = ctx->GetObjectManager();
+
     auto compute_pass = pm->CreateComputePrepass(
         CULLING_PREPASS,
         [pm, bm, om, tdm, ldm, idm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame)
@@ -378,8 +406,11 @@ void DefaultRenderPassNamespace::SetDefaultCullingComputeCountPass(PassManager* 
 		);
 }
 
-void DefaultRenderPassNamespace::SetDefaultCullingOffstPass(PassManager* pm, BufferManager* bm)
+void DefaultRenderPassNamespace::SetDefaultCullingOffstPass(EngineContext* ctx)
 {
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+
     auto compute_pass = pm->CreateComputePrepass(CULLING_OFFSET_PREPASS,
         [bm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame) {
             pm->ComputePassStandardBody(cb, &cp, bm, nullptr, nullptr, pass_frame);
@@ -388,8 +419,11 @@ void DefaultRenderPassNamespace::SetDefaultCullingOffstPass(PassManager* pm, Buf
     );
 }
 
-void DefaultRenderPassNamespace::SetDefaultCullingOutIndirectPass(PassManager* pm, BufferManager* bm)
+void DefaultRenderPassNamespace::SetDefaultCullingOutIndirectPass(EngineContext* ctx)
 {
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+
     pm->CreateComputePrepass(CULLING_OUT_INDIRECT_PREPASS,
         [bm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame) {
             ComputeCullingOutIndirectUniform data;
@@ -399,8 +433,12 @@ void DefaultRenderPassNamespace::SetDefaultCullingOutIndirectPass(PassManager* p
     );
 }
 
-void DefaultRenderPassNamespace::SetDefaultCullingOutTransformPass(PassManager* pm, BufferManager* bm, ObjectManager* om, TransformDataModule* tdm, LightDataModule* ldm, InderectDataModule* idm)
+void DefaultRenderPassNamespace::SetDefaultCullingOutTransformPass(EngineContext* ctx, TransformDataModule* tdm, LightDataModule* ldm, InderectDataModule* idm)
 {
+    PassManager* pm = ctx->GetRenderManager();
+    BufferManager* bm = ctx->GetBufferManager();
+	ObjectManager* om = ctx->GetObjectManager();
+
     pm->CreateComputePass(
         CULLING_WRITE_PASS,
         [pm, bm, om, tdm, ldm, idm](SDL_GPUCommandBuffer* cb, PassManager* pm, ComputePassStep& cp, uint8_t pass_frame)

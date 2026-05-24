@@ -29,6 +29,7 @@
 #include "CountBufferDataModule.h"
 #include "config.h"
 #include "UI_ImGui.h"
+#include "EngineContext.h"
 
 struct PrepassTimingReport;
 static bool UPS_priority = true;
@@ -46,6 +47,8 @@ public:
 	CameraManager* GetCameraManager() const { return camera_manager; }
 	MaterialManager* GetMaterialManager() const { return material_manager; }
     BatchBuilder* GetBatchBuilder() const { return batch_builder; }
+    
+	EngineContext* GetEngineContext() { return engine_context; }
 
 	ThreadController* GetThreadController() const { return thread_controller; }
 
@@ -113,6 +116,7 @@ private:
     BoundSphereDataModule* bound_sphere_data_module = nullptr;
     CountBufferDataModule* count_data_module = nullptr;
 
+	EngineContext* engine_context;
     std::atomic<bool> running = true;
     ImDrawData* imgui_draw_data = nullptr;
 

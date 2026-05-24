@@ -14,9 +14,11 @@ class BoundSphereDataModule;
 class BatchBuilder;
 class CountBufferDataModule;
 
+class EngineContext;
+
 namespace DefaultUpdateSet
 {
-	void SetDefaultCameraUpdater(BufferManager* buffer_manager, CameraManager* camera);
+	/*void SetDefaultCameraUpdater(BufferManager* buffer_manager, CameraManager* camera);
 	void SetDefaultPositionUpdater(BufferManager* buffer_manager, ObjectManager* om, TransformDataModule* tdm);
 	void SetDefaultLightUpdater(BufferManager* buffer_manager, ObjectManager* om, CameraManager* cm, LightDataModule* ldm);
 	void SetDefaultPositionIndexUpdater(BufferManager* buffer_manager, PassManager* rm, ObjectManager* om, PIB_DataModule* pib_dm, BatchBuilder* bb);
@@ -31,6 +33,22 @@ namespace DefaultUpdateSet
 	void SetDefaultOutTransformUpdater(BufferManager* bm, TransformDataModule* tdm);
 	void SetDefaultOutIndirectUpldater(BufferManager* bm, ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm);
 
-	void SetDefaultCountReader(BufferManager* bm, TransformDataModule* tdm);
+	void SetDefaultCountReader(BufferManager* bm, TransformDataModule* tdm);*/
+
+	void SetDefaultCameraUpdater(EngineContext& ctx);
+	void SetDefaultPositionUpdater(EngineContext& ctx, TransformDataModule* tdm);
+	void SetDefaultLightUpdater(EngineContext& ctx, LightDataModule* ldm);
+	void SetDefaultPositionIndexUpdater(EngineContext& ctx, PIB_DataModule* pib_dm);
+	void SetDefaultVertexUpdater(EngineContext& ctx);
+	void SetDefaultIndexUpdater(EngineContext& ctx);
+	void SetDefaultLightCamerasUpdater(EngineContext& ctx, LightDataModule* ldm);
+	void SetDefaultIndirectUpdater(EngineContext& ctx, InderectDataModule* idm);
+	void SetDefaultBoundSphereUpdater(EngineContext& ctx, BoundSphereDataModule* bdm);
+	void SetDefaultCountBufferUpdater(EngineContext& ctx, CountBufferDataModule* cdm, LightDataModule* ldm);
+	void SetDefaultOffsetBufferUpdater(EngineContext& ctx, CountBufferDataModule* cdm, LightDataModule* ldm);
+	void SetDefaultEntityToBatchUpdater(EngineContext& ctx, PIB_DataModule* pdm);
+	void SetDefaultOutTransformUpdater(EngineContext& ctx, TransformDataModule* tdm);
+	void SetDefaultOutIndirectUpldater(EngineContext& ctx, LightDataModule* ldm);
+	void SetDefaultCountReader(EngineContext& ctx, TransformDataModule* tdm);
 	
 };

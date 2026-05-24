@@ -14,11 +14,12 @@ public:
 	void BuildComputeBatches(PipeManager* pm, ShaderManager* sm);
 	void BuildComputePrepassBatches(PipeManager* pm, ShaderManager* sm);
 	bool CheckPIBNeedUpload() { return need_PIB_upload; };
+	void SetDirtyBatches(bool state) { dirty_batches = state; };
 	void SetPIBNeedUpload(bool state) { need_PIB_upload = state; };
 	uint32_t AskNumCommands();
 private:
 	void FinilizeRenderBatches(PassManager* pass_manager);
-	bool dirty_batches = true; // Определить сеттер!
+	bool dirty_batches = true;
 	bool need_PIB_upload = true;
 
 	uint32_t total_commands = 0;

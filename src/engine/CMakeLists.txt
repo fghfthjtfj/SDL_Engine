@@ -98,6 +98,7 @@ set(CORE_SRC
     src/DefaultUpdateSet.cpp
     src/UI_ImGui.cpp
     src/PCH.cpp
+    src/EngineContext.cpp
 )
 set(CORE_HDR
     include/Engine.h
@@ -105,6 +106,7 @@ set(CORE_HDR
     include/DefaultUpdateSet.h
     include/UI_ImGui.h
     include/PCH.h
+    include/EngineContext.h
 )
 
 list(TRANSFORM MANAGERS_SRC PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)

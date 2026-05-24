@@ -588,6 +588,7 @@ Engine::Engine(SDL_Window* window, SDL_GPUDevice* dev, float width, float height
 	bound_sphere_data_module = new BoundSphereDataModule();
 	count_data_module = new CountBufferDataModule();
 
+	engine_context = new EngineContext(buffer_manager, texture_manager, pass_manager, material_manager, object_manager, shader_manager, model_manager, camera_manager, batch_builder);
 	InitDefaultBufferUpdaters();
 	InitPasses();
 	pass_manager->FillRenderPasses();
@@ -619,14 +620,14 @@ void Engine::InitDefaultBufferUpdaters()
 {
 	using namespace DefaultUpdateSet;
 
-	SetDefaultCameraUpdater(buffer_manager, camera_manager);
-	SetDefaultPositionUpdater(buffer_manager, object_manager, transform_data_module);
-	SetDefaultLightUpdater(buffer_manager, object_manager, camera_manager, light_data_module);
-	SetDefaultPositionIndexUpdater(buffer_manager, pass_manager, object_manager, pib_data_module, batch_builder);
-	SetDefaultVertexUpdater(buffer_manager, model_manager);
-	SetDefaultIndexUpdater(buffer_manager, model_manager);
-	SetDefaultLightCamerasUpdater(buffer_manager, object_manager, light_data_module);
-	SetDefaultIndirectUpdater(buffer_manager, pass_manager, indirect_data_module);
+	SetDefaultCameraUpdater(*engine_context);
+	SetDefaultPositionUpdater(*engine_context, transform_data_module);
+	SetDefaultLightUpdater(*engine_context, light_data_module);
+	SetDefaultPositionIndexUpdater(*engine_context, pib_data_module);
+	SetDefaultVertexUpdater(*engine_context);
+	SetDefaultIndexUpdater(*engine_context);
+	SetDefaultLightCamerasUpdater(*engine_context, light_data_module);
+	SetDefaultIndirectUpdater(*engine_context, indirect_data_module);
 
 	//SetDefaultCountBufferUpdater(buffer_manager, object_manager, count_data_module, light_data_module, batch_builder);
 	//SetDefaultBoundSphereUpdater(buffer_manager, pass_manager, model_manager, bound_sphere_data_module);
@@ -645,9 +646,9 @@ void Engine::InitPasses()
 	//SetDefaultCullingComputeCountPass(pass_manager, buffer_manager, object_manager, transform_data_module, light_data_module, indirect_data_module);
 	//SetDefaultCullingOutIndirectPass(pass_manager, buffer_manager);
 
-	SetDefaultShadowPCFRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
+	SetDefaultShadowPCFRenderPass(engine_context);
 	//SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager, dev, win);
-	SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager);
+	SetDefaultMainRenderPass(engine_context);
 	//SetDefaultShadowVSMRenderPass(pass_manager, texture_manager, buffer_manager, object_manager, batch_builder);
 	//SetDefaultShadowBlurPass(pass_manager, buffer_manager); // ДЛЯ VSM
 	//SetDefaultMainRenderPass(pass_manager, texture_manager, buffer_manager);

@@ -9,23 +9,17 @@ struct VSInput
 
 struct VSOutput
 {
-    float4 position          : SV_Position;
-    float2 v_uv              : TEXCOORD0;
-    float3 v_worldPos        : TEXCOORD1;
-    float3 v_worldNormal     : TEXCOORD2;
-    float3 v_worldTangent    : TEXCOORD3;
-    float3 v_worldBitangent  : TEXCOORD4;
-    float4 v_lightSpacePos0  : TEXCOORD5;
-    float4 v_lightSpacePos1  : TEXCOORD6;
-    float4 v_lightSpacePos2  : TEXCOORD7;
-    float4 v_lightSpacePos3  : TEXCOORD8;
-    float4 v_lightSpacePos4  : TEXCOORD9;
-    float4 v_lightSpacePos5  : TEXCOORD10;
+    float4 position         : SV_Position;
+    float2 v_uv             : TEXCOORD0;
+    float3 v_worldPos       : TEXCOORD1;
+    float3 v_worldNormal    : TEXCOORD2;
+    float3 v_worldTangent   : TEXCOORD3;
+    float3 v_worldBitangent : TEXCOORD4;
 };
 
 // GLSL std430 buffer → HLSL StructuredBuffer
-StructuredBuffer<float4x4> ModelMatrixBlock : register(t0, space0);
-StructuredBuffer<int>      PositionIndexBuffer : register(t1, space0);
+StructuredBuffer<float4x4> ModelMatrixBlock     : register(t0, space0);
+StructuredBuffer<int>      PositionIndexBuffer  : register(t1, space0);
 
 // GLSL std140 buffer → HLSL cbuffer
 struct CameraData
@@ -35,16 +29,6 @@ struct CameraData
 };
 StructuredBuffer<CameraData> Camera : register(t2, space0);
 
-
-
-struct LightCamera
-{
-    float4x4 view;
-    float4x4 proj;
-};
-
-StructuredBuffer<LightCamera> LightCameras : register(t3, space0);
-static const float NORMAL_BIAS = 0.005;
 VSOutput main(VSInput input)
 {
     VSOutput output;
@@ -55,32 +39,18 @@ VSOutput main(VSInput input)
     float4x4 modelMatrix = ModelMatrixBlock[PositionIndexBuffer[input.instanceID]];
     float4 worldPos = mul(modelMatrix, float4(input.a_pos, 1.0));
 
-    // В HLSL mul(M, v) — столбцовое умножение, transpose для нормальной матрицы
+    // В HLSL mul(M, v) — столбцовое умножение
     float3x3 normalMatrix = (float3x3)modelMatrix;
     float3 worldNormal    = normalize(mul(normalMatrix, input.a_normal));
     float3 worldTangent   = normalize(mul(normalMatrix, input.a_tangent));
     float3 worldBitangent = normalize(cross(worldNormal, worldTangent));
 
-    output.position      = mul(proj, mul(view, worldPos));   // реальная позиция — БЕЗ сдвига
-    output.v_worldPos    = worldPos.xyz;                     // освещение тоже из настоящей точки
-    output.v_worldNormal = worldNormal;
-
-    output.v_uv           = input.a_uv;
-
-    output.v_worldTangent = worldTangent;
+    output.position         = mul(proj, mul(view, worldPos));
+    output.v_worldPos       = worldPos.xyz;
+    output.v_worldNormal    = worldNormal;
+    output.v_uv             = input.a_uv;
+    output.v_worldTangent   = worldTangent;
     output.v_worldBitangent = worldBitangent;
-
-    // HLSL не поддерживает массивы в выходных структурах с динамическим индексом,
-    // поэтому разворачиваем цикл вручную
-    float4 shadowPos = float4(worldPos.xyz + worldNormal * NORMAL_BIAS, 1.0);
-
-    output.v_lightSpacePos0 = mul(LightCameras[0].proj, mul(LightCameras[0].view, shadowPos));
-    output.v_lightSpacePos1 = mul(LightCameras[1].proj, mul(LightCameras[1].view, shadowPos));
-    output.v_lightSpacePos2 = mul(LightCameras[2].proj, mul(LightCameras[2].view, shadowPos));
-    output.v_lightSpacePos3 = mul(LightCameras[3].proj, mul(LightCameras[3].view, shadowPos));
-    output.v_lightSpacePos4 = mul(LightCameras[4].proj, mul(LightCameras[4].view, shadowPos));
-    output.v_lightSpacePos5 = mul(LightCameras[5].proj, mul(LightCameras[5].view, shadowPos));
-
 
     return output;
 }

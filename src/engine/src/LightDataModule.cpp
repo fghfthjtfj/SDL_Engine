@@ -181,7 +181,7 @@ static const glm::vec3 cubeUps[6] = {
 inline void StoreSphereLightCameras(BufferManager* bm, UploadTask* task, Positions& P, size_t i, SphereLightComponent::SphereLightData& light) {
 	glm::vec3 position = glm::vec3(P.w[i], P.d[i], P.h[i]);
     glm::mat4 proj = glm::perspectiveZO(
-		glm::radians(90.0f), 1.0f, 0.02f, light.GetMaxDistance());
+		glm::radians(91.0f), 1.0f, 0.02f, light.GetMaxDistance());
     for (int face = 0; face < 6; ++face)
     {
         glm::mat4 view = glm::lookAt(
