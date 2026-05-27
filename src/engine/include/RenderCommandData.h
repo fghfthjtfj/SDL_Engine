@@ -34,6 +34,7 @@ struct AtlasBatchData {
 
 struct ShaderBatchData {
     std::unordered_map<AtlasBatchKey, AtlasBatchData> atlases_batches;
+	std::vector<BufferData*> vertexBuffers;
     std::vector<BufferData*> vertexStorageBuffers;
     std::vector<BufferData*> fragmentStorageBuffers;
     SDL_GPUGraphicsPipeline* pipeline = nullptr;

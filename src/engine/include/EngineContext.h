@@ -8,12 +8,13 @@
 #include "ModelManager.h"
 #include "CameraManager.h"
 #include "BatchBuilder.h"
+#include "PipeManager.h"
 #include "Aliases.h"
 
 
 class EngineContext {
 public:
-	EngineContext(BufferManager* bm, TextureManager* tm, PassManager* pm, MaterialManager* mm, ObjectManager* om, ShaderManager* sm, ModelManager* md, CameraManager* cm, BatchBuilder* bb);
+	EngineContext(BufferManager* bm, TextureManager* tm, PassManager* pm, MaterialManager* mm, ObjectManager* om, ShaderManager* sm, ModelManager* md, CameraManager* cm, PipeManager* rm, BatchBuilder* bb);
 
 	TextureAtlas* CreateTextureAtlas(const AtlasName& name, SDL_GPUTextureCreateInfo tci, const std::string& sampler_name);
 	TextureAtlas* CreateTextureAtlas(const AtlasName& name, const AtlasName& existing_atlas_name, const std::string& sampler_name);
@@ -22,6 +23,9 @@ public:
 	Material* CreateMaterial(std::string name, std::initializer_list<std::pair<TextureSlotRole, TextureName>> textures, std::initializer_list<ShaderName> shaders);
 
 	ModelData* CreateModel(const ModelName& name, const char* model_path, const char* index_path);
+
+	void CreateGraphicsPipelines();
+	void CreateComputePipelines();
 
 	template<typename... Components>
 	Entity CreateEntity(const std::string& scene_name, Components&&... comps) {
@@ -59,6 +63,7 @@ private:
 	ShaderManager* shader_manager = nullptr;
 	ModelManager* model_manager = nullptr;
 	CameraManager* camera_manager = nullptr;
+	PipeManager* pipe_manager = nullptr;
 
 	BatchBuilder* batch_builder = nullptr;
 };

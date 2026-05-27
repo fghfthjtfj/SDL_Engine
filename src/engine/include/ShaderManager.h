@@ -15,8 +15,8 @@ class ShaderManager
 public:
 	ShaderManager(SDL_GPUDevice* device);
 	ShaderProgramDescription* CreateShaderProgramDescription(const std::string& name);
+	VertexShaderData CreateVertexShader(const char* hlsl_path, std::initializer_list<VertexBufferBinding> bindings);
 	FragmentShaderData CreateFragmentShader(const char* path);
-	VertexShaderData CreateVertexShader(const char* path);
 	
 	ShaderProgram* CreateShaderProgram(const std::string& name, ShaderProgramDescription* spd, BufferManager* bm,
 		VertexShaderData vs, std::initializer_list<BufferDataName> vertex_shader_buffers,
@@ -36,7 +36,7 @@ public:
 		ComputePassStep* associated_compute_pass);
 
 
-	VertexShaderData CreateVertexShaderFromSPV(const char* spv_path);
+	VertexShaderData CreateVertexShaderFromSPV(const char* path, std::initializer_list<VertexBufferBinding> bindings);
 	FragmentShaderData CreateFragmentShaderFromSPV(const char* spv_path);
 	ComputeShaderData CreateComputeShaderFromSPV(const char* spv_path);
 
@@ -56,11 +56,16 @@ public:
 	~ShaderManager();
 
 private:
+	VertexShaderData BuildVertexShader(const Uint8* spv, size_t spv_size, const char* dbg_name, std::initializer_list<VertexBufferBinding> bindings);
+
+	FragmentShaderData BuildFragmentShader(const Uint8* spv, size_t spv_size, const char* dbg_name);
+
+	ComputeShaderData BuildComputeShader(Uint8* spv, size_t spv_size, const char* dbg_name);
+
 	std::string BuildCachePath(const char* source_path, uint64_t hash) const;
-	void ReadVertexAttributes(const Uint8* shader_code, size_t shader_size, SDL_GPUVertexBufferDescription& vb, std::vector<SDL_GPUVertexAttribute>& attributes);
-	void ReadVertexAttributes(const SDL_ShaderCross_GraphicsShaderMetadata* metadata, SDL_GPUVertexBufferDescription& vb, std::vector<SDL_GPUVertexAttribute>& attributes);
+	void ReadVertexAttributes(std::initializer_list<ShaderBase::VertexBufferBinding> bindings, VertexShaderData& vs);
+
 	Uint8* LoadOrCompileSPIRV(const char* hlsl_path, SDL_ShaderCross_ShaderStage stage, size_t& out_size);
-	ShaderData CreateShaderFromSPV(const char* path, SDL_GPUShaderStage stage);
 
 	std::string m_cacheBasePath;
 

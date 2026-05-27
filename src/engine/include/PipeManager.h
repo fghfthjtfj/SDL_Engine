@@ -11,8 +11,8 @@ class PipeManager
 {
 public:
 	PipeManager(SDL_GPUDevice* device, SDL_Window* win);
-	void CreateGraphicsPiplenes(ShaderManager* sm);
-	void CreateComputePipelines(ShaderManager* sm);
+	void CreateGraphicsPiplenes(std::unordered_map<std::string, std::unique_ptr<ShaderProgram>>& shader_programs);
+	void CreateComputePipelines(std::vector<std::unique_ptr<ComputeShaderProgram>>& compute_shader_programs);
 
 	SDL_GPUColorTargetDescription MakeDefaultColorTarget();
 	SDL_GPUColorTargetDescription MakeNoColorTarget();

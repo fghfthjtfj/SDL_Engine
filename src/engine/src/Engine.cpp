@@ -251,8 +251,8 @@ void Engine::PrepareFunc(uint8_t slot)
 	slot_controller->SetSlotState(slot, PREPARING);
 	buffer_manager->logic_index = slot;
 
-	pipe_manager->CreateGraphicsPiplenes(shader_manager);
-	pipe_manager->CreateComputePipelines(shader_manager);
+	engine_context->CreateGraphicsPipelines();
+	engine_context->CreateComputePipelines();
 
 	batch_builder->BuildRenderBatches(pipe_manager, pass_manager, object_manager, object_manager->GetActiveScene());
 	batch_builder->BuildComputeBatches(pipe_manager, shader_manager);
@@ -490,6 +490,9 @@ bool Engine::RenderFunc(uint8_t slot)
 	pass_manager->SetRenderFrame(slot);
 	pass_manager->ExecutePassesSteps(cb, slot);
 
+	BeginImGuiFrame();
+	UI_ImGui::Iterate(object_manager, camera_manager);
+	EndImGuiFrame();
 	// === ImGui — только если данные готовы ===
 	if (imgui_draw_data && imgui_draw_data->CmdListsCount > 0)
 	{
@@ -588,7 +591,7 @@ Engine::Engine(SDL_Window* window, SDL_GPUDevice* dev, float width, float height
 	bound_sphere_data_module = new BoundSphereDataModule();
 	count_data_module = new CountBufferDataModule();
 
-	engine_context = new EngineContext(buffer_manager, texture_manager, pass_manager, material_manager, object_manager, shader_manager, model_manager, camera_manager, batch_builder);
+	engine_context = new EngineContext(buffer_manager, texture_manager, pass_manager, material_manager, object_manager, shader_manager, model_manager, camera_manager, pipe_manager, batch_builder);
 	InitDefaultBufferUpdaters();
 	InitPasses();
 	pass_manager->FillRenderPasses();

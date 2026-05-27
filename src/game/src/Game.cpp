@@ -51,9 +51,11 @@ SDL_AppResult Game::MainInit()
 	TextureHandle* ground = ctx->CreateTextureFromFile("new_car_ground", "albedo_atlas", "textures/assets/new_car_ground.png");
 	TextureHandle* glass = ctx->CreateTextureFromFile("new_car_glass", "albedo_atlas", "textures/assets/new_car_glass.png");
 
-    using namespace DefaultShaderProgramSet;
-    SetMainShaderProgram(bufferManager, shaderManager, passManager);
-    SetDefaultShadowShaderProgram(bufferManager, shaderManager, passManager);
+    {
+        using namespace DefaultShaderProgramSet;
+        SetMainShaderProgram(bufferManager, shaderManager, passManager);
+        SetDefaultShadowShaderProgram(bufferManager, shaderManager, passManager);
+    }
     
     auto material_car = ctx->CreateMaterial("car", {
         {TextureSlotRole::Albedo, "new_car"},
@@ -106,7 +108,7 @@ SDL_AppResult Game::MainInit()
         PositionProxy16{ 1,0,0,3,  0,1,0,0,  0,0,1,2.5f,  0,0,0,1 },
         ShadowComponent{}
     );
-    //objectManager->CreateEntity("main_menu",
+    //ctx->CreateEntity("main_menu",
     //    SpotLightComponent{ SpotLightComponent::SpotLightData{ 0, 1.0f, 0.0f, 0.0f, 0.18f, 1, 1, 1, 100 } },
     //    PositionProxy16{ 1,0,0,-2.5f,  0,1,0,0,  0,0, 1,1.25f,  0,0,0,1 },
     //    ShadowCasterComponent{}
@@ -125,10 +127,6 @@ SDL_AppResult Game::MainInit()
 
 SDL_AppResult Game::MainIterate()
 {
-    engine->BeginImGuiFrame();
-    UI_ImGui::Iterate(objectManager, cameraManager);
-    engine->EndImGuiFrame();
-
     int mouse_buttons = SDL_GetMouseState(&mouse_x, &mouse_y);
 
     cameraManager->GetActiveCamera()->RotateView(mouse_x, mouse_y, lmb_down);

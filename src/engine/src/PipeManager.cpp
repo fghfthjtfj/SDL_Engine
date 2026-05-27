@@ -1,6 +1,5 @@
 #include "PCH.h"
 #include "PipeManager.h"
-#include "ShaderManager.h"
 #include "RenderCommandData.h"
 
 
@@ -9,39 +8,24 @@ PipeManager::PipeManager(SDL_GPUDevice* dev, SDL_Window* win) {
     this->dev = dev;
 }
 
-void PipeManager::CreateGraphicsPiplenes(ShaderManager* sm)
+void PipeManager::CreateGraphicsPiplenes(std::unordered_map<std::string, std::unique_ptr<ShaderProgram>>& shader_programs)
 {
-    if (!sm) {
-		SDL_Log("PipeManager::ShaderManager pointer is null!");
-        return;
-	}
-    if (!sm->IsDirtyGraphicsPipelines()) {
-        return;
-	}
-    for (auto& pair : sm->GetShaderPrograms()) {
+    for (auto& pair : shader_programs) {
         ShaderProgram* sp = pair.second.get();
         SDL_GPUGraphicsPipeline* pipe = GetOrCreatePipeline(sp);
         if (!pipe) {
 			SDL_Log("Failed to create pipeline for shader program: %s", pair.first.c_str());
         }
 	}
-	sm->SetDirtyGraphicsPipelines(false);
 }
 
-void PipeManager::CreateComputePipelines(ShaderManager* sm)
+void PipeManager::CreateComputePipelines(std::vector<std::unique_ptr<ComputeShaderProgram>>& compute_shader_programs)
 {
-    if (!sm) {
-        SDL_Log("PipeManager::ShaderManager pointer is null!");
-        return;
-    }
-    if (!sm->IsDirtyComputePipelines()) {
-        return;
-    }
-    for (auto& pair : sm->GetComputeShaderPrograms()) {
+    for (auto& pair : compute_shader_programs) {
         ComputeShaderProgram* sp = pair.get();
 		SDL_GPUComputePipeline* pipe = GetOrCreateComputePipeline(sp);
         if (!pipe) {
-            SDL_Log("Failed to create compute pipeline for shader program: %s", sp->debug_name);
+            SDL_Log("Failed to create compute pipeline for shader program: %s", sp->debug_name.c_str());
 		}
     }
 }
@@ -72,8 +56,8 @@ SDL_GPUGraphicsPipeline* PipeManager::GetOrCreatePipeline(ShaderProgram* sp)
     pci.rasterizer_state.depth_bias_slope_factor = sp->spd->rasterizer_bias.depth_bias_slope_factor;
     pci.rasterizer_state.depth_bias_clamp = sp->spd->rasterizer_bias.depth_bias_clamp;
 
-    pci.vertex_input_state.num_vertex_buffers = 1;
-    pci.vertex_input_state.vertex_buffer_descriptions = &sp->vs.vb;
+    pci.vertex_input_state.num_vertex_buffers = safe_u32(sp->vs.vbs.size());
+    pci.vertex_input_state.vertex_buffer_descriptions = sp->vs.vbs.data();
     pci.vertex_input_state.num_vertex_attributes = safe_u32(sp->vs.attributes.size());
     pci.vertex_input_state.vertex_attributes = sp->vs.attributes.data();
 

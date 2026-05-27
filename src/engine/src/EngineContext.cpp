@@ -1,16 +1,17 @@
 #include "PCH.h"
 #include "EngineContext.h"
 
-EngineContext::EngineContext(BufferManager* bm, TextureManager* tm, PassManager* pm, MaterialManager* mm, ObjectManager* om, ShaderManager* sm, ModelManager* md, CameraManager* cm, BatchBuilder* bb)
+EngineContext::EngineContext(BufferManager* bm, TextureManager* tm, PassManager* rm, MaterialManager* mm, ObjectManager* om, ShaderManager* sm, ModelManager* md, CameraManager* cm, PipeManager* pm, BatchBuilder* bb)
 {
 	this->buffer_manager = bm;
 	this->texture_manager = tm;
-	this->pass_manager = pm;
+	this->pass_manager = rm;
 	this->material_manager = mm;
 	this->object_manager = om;
 	this->shader_manager = sm;
 	this->model_manager = md;
 	this->camera_manager = cm;
+	this->pipe_manager = pm;
 
 	this->batch_builder = bb;
 }
@@ -36,6 +37,7 @@ TextureHandle* EngineContext::CreateTextureFromFile(const TextureName& name, con
 Material* EngineContext::CreateMaterial(std::string name, std::initializer_list<std::pair<TextureSlotRole, TextureName>> textures, std::initializer_list<ShaderName> shaders)
 {
 	std::vector<ShaderProgram*> shader_programs;
+	shader_programs.reserve(shaders.size());
 	for (const auto& shader_name : shaders) {
 		ShaderProgram* sp = shader_manager->GetShaderProgram(shader_name);
 		if (!sp) {
@@ -45,6 +47,7 @@ Material* EngineContext::CreateMaterial(std::string name, std::initializer_list<
 		shader_programs.push_back(sp);
 	}
 	std::vector<std::pair<TextureSlotRole, TextureHandle*>> texture_handles;
+	texture_handles.reserve(textures.size());
 	for (const auto& [role, texture_name] : textures) {
 		TextureHandle* handle = texture_manager->GetTextureHandle(texture_name);
 		if (!handle) {
@@ -59,4 +62,25 @@ Material* EngineContext::CreateMaterial(std::string name, std::initializer_list<
 ModelData* EngineContext::CreateModel(const ModelName& name, const char* model_path, const char* index_path)
 {
 	return model_manager->CreateModel(name, model_path, index_path);
+}
+
+void EngineContext::CreateGraphicsPipelines()
+{
+	if (!shader_manager->IsDirtyGraphicsPipelines()) {
+		return;
+	}
+	
+	auto& shader_programs = shader_manager->GetShaderPrograms();
+	pipe_manager->CreateGraphicsPiplenes(shader_programs);
+	shader_manager->SetDirtyGraphicsPipelines(false);
+}
+
+void EngineContext::CreateComputePipelines()
+{
+	if (!shader_manager->IsDirtyComputePipelines()) {
+		return;
+	}
+	auto& compute_shader_programs = shader_manager->GetComputeShaderPrograms();
+	pipe_manager->CreateComputePipelines(compute_shader_programs);
+	shader_manager->SetDirtyComputePipelines(false);
 }

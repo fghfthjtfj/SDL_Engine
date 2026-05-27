@@ -21,7 +21,7 @@ MaterialManager::MaterialManager()
 //	}
 //}
 
-Material* MaterialManager::CreateMaterial(std::string name, std::vector<std::pair<TextureSlotRole, TextureHandle*>> textures, std::vector<ShaderProgram*> shader_programs)
+Material* MaterialManager::CreateMaterial(std::string name, std::vector<std::pair<TextureSlotRole, TextureHandle*>>& textures, std::vector<ShaderProgram*>& shader_programs)
 {
 	auto it = materials.find(name);
 	if (it != materials.end()) {

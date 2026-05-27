@@ -1,8 +1,5 @@
 struct VSInput {
     float3 a_pos     : POSITION;
-    float2 a_uv      : TEXCOORD0;
-    float3 a_normal  : NORMAL;
-    float3 a_tangent : TANGENT;
     uint   instanceID : SV_InstanceID;
 };
 
@@ -39,8 +36,6 @@ VSOutput main(VSInput input)
     o.sv_pos    = mul(LightCameras[currentCameraIndex].proj, viewPos);
     o.viewPosWS = viewPos.xyz;
 
-    // удержание входов — подмешиваем в интерполянт, который не участвует в трансформе
-    o.viewPosWS += float3(input.a_uv.x, input.a_normal.x, input.a_tangent.x) * 0.0001 - 0.0001;
 
     return o;
 }

@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <SDL3/SDL.h>
-
+#include "ShaderData.h"
 
 
 struct PosUVNormal {
@@ -13,19 +13,22 @@ struct PosUVNormal {
     float nx, ny, nz;    // normal
     float tx, ty, tz;  // tangent
 };
+struct PosOnly { float x, y, z; };
 
-
-struct MatrixParams {
-    float angleX;
-    float angleY;
-    float angleZ;
-    float px;
-    float py;
-    float pz;
-    float scale;
+const VertexFormat FMT_PosUVNormal = {
+    {
+        { POSITION, offsetof(PosUVNormal, x),  SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3 },
+        { UV,       offsetof(PosUVNormal, u),  SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2 },
+        { NORMAL,   offsetof(PosUVNormal, nx), SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3 },
+        { TANGENT,  offsetof(PosUVNormal, tx), SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3 },
+    },
+    sizeof(PosUVNormal)
 };
 
-void MakeAndStoreModelMatrix(std::vector<uint8_t>& scratchBuffer, std::vector<MatrixParams>& params);
+const VertexFormat FMT_Pos = {
+    { { POSITION, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3 } },
+    sizeof(PosOnly)
+};
 
 
 //std::vector<PosUV> MakeCubeVertices();
@@ -33,7 +36,6 @@ std::vector<PosUVNormal> MakeCubeVerticesNorm();
 
 //std::vector<PosUV> MakeSphereVertices();
 std::vector<Uint16> MakeSphereIndices();
-void UpdateRotationByMouse(float mouse_x, float mouse_y, float &angle_x, float &angle_y, std::vector<MatrixParams>& current_params);
 
 
 extern const std::vector<Uint16> IndicesCube;

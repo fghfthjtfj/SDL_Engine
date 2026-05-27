@@ -25,87 +25,35 @@ std::string ShaderManager::BuildCachePath(const char* source_path, uint64_t hash
 }
 
 void ShaderManager::ReadVertexAttributes(
-    const SDL_ShaderCross_GraphicsShaderMetadata* metadata,
-    SDL_GPUVertexBufferDescription& vb,
-    std::vector<SDL_GPUVertexAttribute>& attributes)
+    std::initializer_list<VertexBufferBinding> bindings,
+    VertexShaderData& vs)
 {
-    attributes.clear();
-    if (!metadata || metadata->num_inputs == 0) {
-        SDL_zero(vb);
-        vb.slot = 0;
-        vb.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-        vb.pitch = 0;
-        vb.instance_step_rate = 0;
-        return;
-    }
+    vs.attributes.clear(); vs.vbs.clear();
 
-    std::vector<const SDL_ShaderCross_IOVarMetadata*> input_vars;
-    input_vars.reserve(metadata->num_inputs);
-    for (Uint32 i = 0; i < metadata->num_inputs; ++i) {
-        input_vars.push_back(&metadata->inputs[i]);
-    }
-    std::sort(input_vars.begin(), input_vars.end(),
-        [](const SDL_ShaderCross_IOVarMetadata* a, const SDL_ShaderCross_IOVarMetadata* b) {
-        return a->location < b->location;
-    });
+    Uint32 slot = 0;
+    for (auto& g : bindings) {
+        for (VertexSemantic sem : g.pull) {
+            const VertexAttr* a = g.format->Find(sem);
+            if (!a) {
+                SDL_Log("Warning: Vertex format for buffer '%s' does not contain semantic %u, skipping this attribute.",
+					g.buffer, (Uint32)sem);
+                continue;
+			}
 
-    size_t offset = 0;
-    for (const auto* var : input_vars) {
-        SDL_GPUVertexAttribute attr{};
-        attr.buffer_slot = 0;
-        attr.location = var->location;
-
-        SDL_GPUVertexElementFormat format = SDL_GPU_VERTEXELEMENTFORMAT_INVALID;
-        uint32_t elem_size = 0;
-
-        switch (var->vector_type) {
-        case SDL_SHADERCROSS_IOVAR_TYPE_FLOAT32:
-            switch (var->vector_size) {
-            case 1: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT;  elem_size = 4; break;
-            case 2: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2; elem_size = 8; break;
-            case 3: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3; elem_size = 12; break;
-            case 4: format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4; elem_size = 16; break;
-            }
-            break;
-        case SDL_SHADERCROSS_IOVAR_TYPE_UINT32:
-            switch (var->vector_size) {
-            case 1: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT;  elem_size = 4; break;
-            case 2: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT2; elem_size = 8; break;
-            case 3: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT3; elem_size = 12; break;
-            case 4: format = SDL_GPU_VERTEXELEMENTFORMAT_UINT4; elem_size = 16; break;
-            }
-            break;
-        case SDL_SHADERCROSS_IOVAR_TYPE_INT32:
-            switch (var->vector_size) {
-            case 1: format = SDL_GPU_VERTEXELEMENTFORMAT_INT;  elem_size = 4; break;
-            case 2: format = SDL_GPU_VERTEXELEMENTFORMAT_INT2; elem_size = 8; break;
-            case 3: format = SDL_GPU_VERTEXELEMENTFORMAT_INT3; elem_size = 12; break;
-            case 4: format = SDL_GPU_VERTEXELEMENTFORMAT_INT4; elem_size = 16; break;
-            }
-            break;
-        default:
-            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
-                "Unsupported vertex input type %d (vector_size %u) at location %u",
-                var->vector_type, var->vector_size, var->location);
-            continue;
+            SDL_GPUVertexAttribute attr{};
+            attr.location = (Uint32)sem;   // = [[vk::location]] в шейдере
+            attr.buffer_slot = slot;
+            attr.format = a->format;
+            attr.offset = a->offset; 
+            vs.attributes.push_back(attr);
         }
-
-        if (format == SDL_GPU_VERTEXELEMENTFORMAT_INVALID) continue;
-
-        attr.format = format;
-        attr.offset = safe_u32(offset);
-        offset += elem_size;
-        attributes.push_back(attr);
-        for (const auto& a : attributes)
-            SDL_Log("vattr loc=%u fmt=%d offset=%u", a.location, (int)a.format, a.offset);
-        SDL_Log("pitch=%u", vb.pitch);
+        SDL_GPUVertexBufferDescription vb{};
+        vb.slot = slot;
+        vb.pitch = g.format->stride;          // настоящий sizeof
+        vb.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX; vb.instance_step_rate = 0;
+        vs.vbs.push_back(vb);
+        ++slot;
     }
-
-    SDL_zero(vb);
-    vb.slot = 0;
-    vb.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-    vb.pitch = safe_u32(offset);
-    vb.instance_step_rate = 0;
 }
 
 Uint8* ShaderManager::LoadOrCompileSPIRV(const char* hlsl_path,
@@ -169,97 +117,104 @@ Uint8* ShaderManager::LoadOrCompileSPIRV(const char* hlsl_path,
     return (Uint8*)compiled;
 }
 
-VertexShaderData ShaderManager::CreateVertexShader(const char* hlsl_path) {
-    size_t spv_size = 0;
-    Uint8* spv_code = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_VERTEX, spv_size);
-    if (!spv_code) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load/compile vertex shader: %s", hlsl_path);
-        return {};
-    }
-
-    VertexShaderData vs{};
-    SDL_ShaderCross_GraphicsShaderMetadata* metadata =
-        SDL_ShaderCross_ReflectGraphicsSPIRV(spv_code, spv_size, 0);
-
-    if (!metadata) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect vertex shader: %s", hlsl_path);
-        SDL_free(spv_code);
-        return {};
-    }
-
-    ReadVertexAttributes(metadata, vs.vb, vs.attributes);
-
-    SDL_ShaderCross_SPIRV_Info spirv_info{};
-    spirv_info.bytecode = spv_code;
-    spirv_info.bytecode_size = spv_size;
-    spirv_info.entrypoint = "main";
-    spirv_info.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_VERTEX;
-    spirv_info.props = 0;
-
-    vs.shader_data.shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(
-        dev, &spirv_info, &metadata->resource_info, 0);
-
-    SDL_free(metadata);
-    SDL_free(spv_code);
-
-    if (!vs.shader_data.shader) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GPU vertex shader: %s", hlsl_path);
-    }
+VertexShaderData ShaderManager::CreateVertexShader(const char* hlsl_path,
+    std::initializer_list<VertexBufferBinding> bindings)
+{
+    size_t n = 0;
+    Uint8* spv = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_VERTEX, n);
+    if (!spv) return {};
+    VertexShaderData vs = BuildVertexShader(spv, n, hlsl_path, bindings);
+    SDL_free(spv);
     return vs;
 }
 
-FragmentShaderData ShaderManager::CreateFragmentShader(const char* hlsl_path) {
-    size_t spv_size = 0;
-    Uint8* spv_code = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT, spv_size);
-    if (!spv_code) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load/compile fragment shader: %s", hlsl_path);
-        return {};
-    }
-
-    FragmentShaderData fs{};
-    SDL_ShaderCross_GraphicsShaderMetadata* metadata =
-        SDL_ShaderCross_ReflectGraphicsSPIRV(spv_code, spv_size, 0);
-
-    if (!metadata) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect fragment shader: %s", hlsl_path);
-        SDL_free(spv_code);
-        return {};
-    }
-
-    SDL_ShaderCross_SPIRV_Info spirv_info{};
-    spirv_info.bytecode = spv_code;
-    spirv_info.bytecode_size = spv_size;
-    spirv_info.entrypoint = "main";
-    spirv_info.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT;
-    spirv_info.props = 0;
-
-    fs.shader_data.shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(
-        dev, &spirv_info, &metadata->resource_info, 0);
-
-    SDL_free(metadata);
-    SDL_free(spv_code);
-
-    if (!fs.shader_data.shader) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GPU fragment shader: %s", hlsl_path);
-    }
+FragmentShaderData ShaderManager::CreateFragmentShader(const char* hlsl_path)
+{
+    size_t n = 0;
+    Uint8* spv = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT, n);
+    if (!spv) return {};
+    FragmentShaderData fs = BuildFragmentShader(spv, n, hlsl_path);
+    SDL_free(spv);
     return fs;
 }
 
-ComputeShaderData ShaderManager::CreateComputeShader(const char* hlsl_path) {
-    size_t spv_size = 0;
-    Uint8* spv_code = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_COMPUTE, spv_size);
-    if (!spv_code) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load/compile compute shader: %s", hlsl_path);
+ComputeShaderData ShaderManager::CreateComputeShader(const char* hlsl_path)
+{
+    size_t n = 0;
+    Uint8* spv = LoadOrCompileSPIRV(hlsl_path, SDL_SHADERCROSS_SHADERSTAGE_COMPUTE, n);
+    if (!spv) return {};
+    return BuildComputeShader(spv, n, hlsl_path);   // владение spv уходит в cs
+}
+
+VertexShaderData ShaderManager::BuildVertexShader(
+    const Uint8* spv, size_t spv_size, const char* dbg_name,
+    std::initializer_list<VertexBufferBinding> bindings)
+{
+    VertexShaderData vs{};
+    ReadVertexAttributes(bindings, vs);   // раскладка из VertexFormat, рефлексия не нужна
+
+    SDL_ShaderCross_GraphicsShaderMetadata* metadata =
+        SDL_ShaderCross_ReflectGraphicsSPIRV(spv, spv_size, 0);
+    if (!metadata) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect vertex shader: %s", dbg_name);
         return {};
     }
 
+    for (Uint32 i = 0; i < metadata->num_inputs; ++i) {
+        const auto& in = metadata->inputs[i];
+        bool ok = false;
+        for (const auto& a : vs.attributes) if (a.location == in.location) { ok = true; break; }
+        if (!ok) {
+            /*SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                "VS '%s': вход location %u не запитан (pull / [[vk::location]])", dbg_name, in.location);*/
+            SDL_Log("Warning: VS '%s': input location %u not provided by vertex buffer bindings (pull / [[vk::location]]), this attribute will be missing in the shader.",
+				dbg_name, in.location);
+            SDL_assert(false);
+        }
+    }
+
+    SDL_ShaderCross_SPIRV_Info info{};
+    info.bytecode = spv; info.bytecode_size = spv_size;
+    info.entrypoint = "main"; info.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_VERTEX; info.props = 0;
+    vs.shader_data.shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(dev, &info, &metadata->resource_info, 0);
+
+    SDL_free(metadata);
+    if (!vs.shader_data.shader)
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GPU vertex shader: %s", dbg_name);
+    return vs;
+}
+
+FragmentShaderData ShaderManager::BuildFragmentShader(
+    const Uint8* spv, size_t spv_size, const char* dbg_name)
+{
+    FragmentShaderData fs{};
+    SDL_ShaderCross_GraphicsShaderMetadata* metadata =
+        SDL_ShaderCross_ReflectGraphicsSPIRV(spv, spv_size, 0);
+    if (!metadata) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect fragment shader: %s", dbg_name);
+        return {};
+    }
+
+    SDL_ShaderCross_SPIRV_Info info{};
+    info.bytecode = spv; info.bytecode_size = spv_size;
+    info.entrypoint = "main"; info.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_FRAGMENT; info.props = 0;
+    fs.shader_data.shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(dev, &info, &metadata->resource_info, 0);
+
+    SDL_free(metadata);
+    if (!fs.shader_data.shader)
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create GPU fragment shader: %s", dbg_name);
+    return fs;
+}
+
+// spv передаётся во владение ComputeShaderData (пайплайн строится позже)
+ComputeShaderData ShaderManager::BuildComputeShader(Uint8* spv, size_t spv_size, const char* dbg_name)
+{
     ComputeShaderData cs{};
-    cs.spv_code = spv_code;
+    cs.spv_code = spv;
     cs.spv_size = spv_size;
 
     SDL_ShaderCross_ComputePipelineMetadata* metadata =
-        SDL_ShaderCross_ReflectComputeSPIRV(spv_code, spv_size, 0);
-
+        SDL_ShaderCross_ReflectComputeSPIRV(spv, spv_size, 0);
     if (metadata) {
         cs.threadcount_x = metadata->threadcount_x;
         cs.threadcount_y = metadata->threadcount_y;
@@ -273,8 +228,7 @@ ComputeShaderData ShaderManager::CreateComputeShader(const char* hlsl_path) {
         SDL_free(metadata);
     }
     else {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect compute shader: %s", hlsl_path);
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to reflect compute shader: %s", dbg_name);
     }
-
     return cs;
 }

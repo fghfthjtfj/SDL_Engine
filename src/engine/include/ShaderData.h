@@ -10,7 +10,27 @@ struct ComputePassStep;
 struct TextureAtlas;
 
 namespace ShaderBase {
+    enum VertexSemantic : Uint32 { POSITION = 0, UV = 1, NORMAL = 2, TANGENT = 3 };
 
+    struct VertexAttr {
+        VertexSemantic semantic;
+        Uint32 offset;
+        SDL_GPUVertexElementFormat format;
+    };
+
+    struct VertexFormat {
+        std::vector<VertexAttr> attrs;
+        Uint32 stride;
+        const VertexAttr* Find(VertexSemantic s) const {
+            for (auto& a : attrs) if (a.semantic == s) return &a;
+            return nullptr;
+        }
+    };
+    struct VertexBufferBinding {
+        const char* buffer;
+        const VertexFormat* format;
+        std::vector<VertexSemantic> pull;
+    };
     struct ShaderData
     {
         SDL_GPUShader* shader = nullptr;
@@ -41,7 +61,7 @@ struct DispatchSizeBinder {
 struct VertexShaderData {
     ShaderData shader_data;
     std::vector<SDL_GPUVertexAttribute> attributes;
-    SDL_GPUVertexBufferDescription vb{};
+    std::vector<SDL_GPUVertexBufferDescription> vbs;
 };
 
 struct FragmentShaderData {

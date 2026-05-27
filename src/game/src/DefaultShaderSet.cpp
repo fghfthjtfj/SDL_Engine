@@ -9,6 +9,7 @@
 #include "BatchBuilder.h"
 #include "DefaultRenderPassSet.h"
 #include "TextureManager.h"
+#include "PositionStructure.h"
 
 namespace DefaultShaderProgramSet
 {
@@ -34,7 +35,7 @@ void DefaultShaderProgramSet::SetMainShaderProgram(BufferManager* bm, ShaderMana
         SDL_Log("Main render shader programs already initialized.");
         return;
     }
-    VertexShaderData vs = sm->CreateVertexShader("../engine/shaders_code/main_pass/main_pass.vert.hlsl");
+    VertexShaderData vs = sm->CreateVertexShader("../engine/shaders_code/main_pass/main_pass.vert.hlsl", { { DEFAULT_VERTEX_BUFFER, &FMT_PosUVNormal, {POSITION, UV, NORMAL, TANGENT} } });
     FragmentShaderData fs = sm->CreateFragmentShader("../engine/shaders_code/main_pass/main_pass.frag.hlsl");
 	FragmentShaderData fs_debug = sm->CreateFragmentShader("../engine/shaders_code/main_pass/debug_pass.frag.hlsl");
     ShaderProgramDescription* spd_main =
@@ -73,7 +74,7 @@ void DefaultShaderProgramSet::SetDefaultShadowShaderProgram(BufferManager* bm, S
         SDL_Log("Shadow render shader programs already initialized.");
         return;
     }
-    VertexShaderData vs_2 = sm->CreateVertexShader("../engine/shaders_code/shadow_pass/shadow_pass.vert.hlsl");
+    VertexShaderData vs_2 = sm->CreateVertexShader("../engine/shaders_code/shadow_pass/shadow_pass.vert.hlsl", { { DEFAULT_VERTEX_BUFFER, &FMT_PosUVNormal, {POSITION} } });
     FragmentShaderData fs_2 = sm->CreateFragmentShader("../engine/shaders_code/shadow_pass/shadow_pass.frag.hlsl");
     RasterizerStateBiasParams shadow_rsbp = {};
     shadow_rsbp.enable_depth_bias = true;
