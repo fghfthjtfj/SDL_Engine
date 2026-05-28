@@ -24,11 +24,11 @@ void UI_ImGui::DrawCameraPanel(CameraManager* cameraManager)
     if (ImGui::CollapsingHeader("Camera"))
     {
         glm::vec3 pos = cam->GetPosition();
-		glm::vec3 tgt = cam->GetTarget();
+        glm::vec3 tgt = cam->GetTarget();
         if (ImGui::DragFloat3("Cam Position", &pos.x, 0.05f))
             cam->SetPosition(pos);
-		if (ImGui::DragFloat3("Cam Target", &tgt.x, 0.05f))
-			cam->SetView(pos, tgt, glm::vec3(0.0f, 1.0f, 0.0f));
+        if (ImGui::DragFloat3("Cam Target", &tgt.x, 0.05f))
+            cam->SetView(pos, tgt, glm::vec3(0.0f, 1.0f, 0.0f));
     }
 }
 
@@ -55,8 +55,6 @@ void UI_ImGui::DrawObjectsPanel(EngineContext* ctx)
 
             if (ImGui::TreeNode(label))
             {
-                if (ImGui::Button("Delete")) to_delete.push_back(e);
-
                 float pos[3] = { P.w[i], P.d[i], P.h[i] };
                 if (ImGui::DragFloat3("Offset", pos, 0.05f))
                 {
@@ -64,6 +62,15 @@ void UI_ImGui::DrawObjectsPanel(EngineContext* ctx)
                     P.d[i] = pos[1];
                     P.h[i] = pos[2];
                 }
+
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.15f, 0.15f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.85f, 0.20f, 0.20f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.55f, 0.10f, 0.10f, 1.0f));
+
+                if (ImGui::Button("Delete", ImVec2(120.0f, 0.0f))) to_delete.push_back(e);
+
+                ImGui::PopStyleColor(3);
+
                 ImGui::TreePop();
             }
         });

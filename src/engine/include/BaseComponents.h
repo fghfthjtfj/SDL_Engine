@@ -31,7 +31,7 @@ struct SoAProxyAddable {
         proxy.emplace_to(static_cast<Derived&>(*this));
     }
 
-    void swap_remove(size_t i) {                          // <-- �������� �����, ���� ���
+    void swap_remove(size_t i) {
         std::apply([&](auto&... col) {
             (..., ([&] {
                 const size_t last = col.size() - 1;
@@ -47,7 +47,7 @@ struct Accelerations : SoAProxyAddable<Accelerations> {
     using soa_tag = void;
     std::vector<float> x, y, z;
     size_t size() const { return x.size(); }
-    auto columns() { return std::tie(x, y, z); }   // <-- ���� ������ �� ������ SoA-���������
+    auto columns() { return std::tie(x, y, z); }
 };
 
 struct AccelerationProxy {
@@ -174,7 +174,7 @@ struct ModelComponent {
     ModelData* model;
 };
 
-// ������� ���������� ������ ��������������� ������� �������� � ������, ��� ��� ������ ��������� � ������� ������������ ��� ������� � ���������
+// Порядок расположения материалов должен соответствовать порядку сабмешей в модели, поскольку индекс материала в сабмеше используется для доступа к материалу
 // Order of materials must correspond to the order of submeshes in the model, as the material index in the submesh is used to access the material
 struct MaterialComponent {
     std::vector<Material*> materials;
@@ -341,7 +341,7 @@ struct Archetype {
         if (!components.count(idx))
             components[idx] = std::make_unique<ComponentArray<T>>();
     }
-    void swap_remove(size_t i) {                 // <-- ��������
+    void swap_remove(size_t i) {
         for (auto& [type, arr] : components)
             arr->swap_remove(i);
     }

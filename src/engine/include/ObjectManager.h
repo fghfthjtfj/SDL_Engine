@@ -70,7 +70,6 @@ private:
     void add_components(Archetype& arch, Components&&... comps);
 
     std::unordered_map<SceneName, std::unique_ptr<SceneData>> scenes_data;
-    std::vector<Entity> entities_to_create;
 	bool dirty_entity = false;
 	bool diry_batches = false;
     bool need_PIB_upload = false;

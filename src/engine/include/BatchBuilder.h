@@ -22,5 +22,6 @@ private:
 	bool dirty_batches = true;
 	bool need_PIB_upload = true;
 
+	
 	uint32_t total_commands = 0;
 };
