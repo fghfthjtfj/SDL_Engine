@@ -254,7 +254,9 @@ void Engine::PrepareFunc(uint8_t slot)
 	engine_context->CreateGraphicsPipelines();
 	engine_context->CreateComputePipelines();
 
-	batch_builder->BuildRenderBatches(pipe_manager, pass_manager, object_manager, object_manager->GetActiveScene());
+	if (batch_builder->BuildRenderBatches(pipe_manager, pass_manager, object_manager, object_manager->GetActiveScene())) {
+		indirect_data_module->MarkDirty();
+	}
 	batch_builder->BuildComputeBatches(pipe_manager, shader_manager);
 	//batch_builder->BuildComputePrepassBatches(pipe_manager, shader_manager);
 
@@ -491,7 +493,7 @@ bool Engine::RenderFunc(uint8_t slot)
 	pass_manager->ExecutePassesSteps(cb, slot);
 
 	BeginImGuiFrame();
-	UI_ImGui::Iterate(object_manager, camera_manager);
+	UI_ImGui::Iterate(engine_context);
 	EndImGuiFrame();
 	// === ImGui — только если данные готовы ===
 	if (imgui_draw_data && imgui_draw_data->CmdListsCount > 0)

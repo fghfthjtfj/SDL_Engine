@@ -30,16 +30,26 @@ struct SoAProxyAddable {
         -> decltype(proxy.emplace_to(static_cast<Derived&>(*this)), void()) {
         proxy.emplace_to(static_cast<Derived&>(*this));
     }
+
+    void swap_remove(size_t i) {                          // <-- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
+        std::apply([&](auto&... col) {
+            (..., ([&] {
+                const size_t last = col.size() - 1;
+                if (i != last) col[i] = std::move(col[last]);
+                col.pop_back();
+                }()));
+            }, static_cast<Derived&>(*this).columns());       // columns() пїЅ пїЅпїЅ Derived
+    }
 };
 
 //-----------------------Acicelerations-----------------------//
 struct Accelerations : SoAProxyAddable<Accelerations> {
     using soa_tag = void;
-
     std::vector<float> x, y, z;
     size_t size() const { return x.size(); }
-
+    auto columns() { return std::tie(x, y, z); }   // <-- пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ SoA-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 };
+
 struct AccelerationProxy {
     float x = 0, y = 0, z = 0;
     using related_soa = Accelerations;
@@ -59,6 +69,7 @@ struct Velocities : SoAProxyAddable<Velocities> {
 
     std::vector<float> x, y, z;
     size_t size() const { return x.size(); }
+    auto columns() { return std::tie(x, y, z); }
 
     void MoveByAccelerations(const std::vector<float>& ax, const std::vector<float>& ay, const std::vector<float>& az);
 
@@ -75,10 +86,11 @@ struct VelocityProxy {
 
 //-----------------------Positions-----------------------//
 struct Positions : SoAProxyAddable<Positions> {
-    using soa_tag = void;              // <— маркер SoA
+    using soa_tag = void;              // <пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ SoA
 
     std::vector<float> x, y, z, w, a, b, c, d, e, f, g, h, i, j, k, l;
     size_t size() const { return x.size(); }
+    auto columns() { return std::tie(x, y, z, w, a, b, c, d, e, f, g, h, i, j, k, l); }
 
     void MoveByVelocities(const std::vector<float>& vx, const std::vector<float>& vy, const std::vector<float>& vz);
 
@@ -111,6 +123,7 @@ struct Parents : SoAProxyAddable<Parents> {
     using soa_tag = void;
     std::vector<Entity> parent;
     size_t size() const { return parent.size(); }
+    auto columns() { return std::tie(parent); }
 };
 
 struct ParentProxy {
@@ -131,6 +144,7 @@ struct LocalOffsets : SoAProxyAddable<LocalOffsets> {
     using soa_tag = void;
     std::vector<float> ox, oy, oz;
     size_t size() const { return ox.size(); }
+    auto columns() { return std::tie(ox, oy, oz); }
 };
 
 struct LocalOffsetProxy {
@@ -160,7 +174,7 @@ struct ModelComponent {
     ModelData* model;
 };
 
-// Порядок материалов должен соответствовать порядку сабмешей в модели, так как индекс материала в сабмеше используется для доступа к материалу
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 // Order of materials must correspond to the order of submeshes in the model, as the material index in the submesh is used to access the material
 struct MaterialComponent {
     std::vector<Material*> materials;
@@ -272,9 +286,13 @@ struct ShadowComponent {};
 
 struct TestComponent {};
 
-struct IComponentArray { virtual ~IComponentArray() = default; };
 
-// AoS (по умолчанию)
+struct IComponentArray {
+    virtual ~IComponentArray() = default;
+    virtual void swap_remove(size_t i) = 0;
+};
+
+// AoS (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 template<typename T, typename = void>
 struct ComponentArray : IComponentArray {
     std::vector<T> data;
@@ -282,19 +300,26 @@ struct ComponentArray : IComponentArray {
     void add(const T& v) { data.push_back(v); }
     T& operator[](size_t i) { return data[i]; }
     size_t size() const { return data.size(); }
+
+    void swap_remove(size_t i) override {
+        const size_t last = data.size() - 1;
+        if (i != last) data[i] = std::move(data[last]);  // пїЅпїЅпїЅпїЅ пїЅпїЅ self-move
+        data.pop_back();
+    };
 };
 
-// SoA (если у T есть soa_tag)
+
+// SoA (пїЅпїЅпїЅпїЅ пїЅ T пїЅпїЅпїЅпїЅ soa_tag)
 template<typename T>
 struct ComponentArray<T, std::enable_if_t<is_soa<T>::value>> : IComponentArray {
-    T data;  // один SoA на архетип
-
+    T data;
     template<typename Proxy>
     auto add(const Proxy& proxy) -> decltype(data.add(proxy), void()) { data.add(proxy); }
-
     size_t size() const { return data.size(); }
 
+    void swap_remove(size_t i) override { data.swap_remove(i); }
 };
+
 
 struct Archetype {
     std::vector<Entity> entities;
@@ -315,5 +340,9 @@ struct Archetype {
         auto idx = std::type_index(typeid(T));
         if (!components.count(idx))
             components[idx] = std::make_unique<ComponentArray<T>>();
+    }
+    void swap_remove(size_t i) {                 // <-- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        for (auto& [type, arr] : components)
+            arr->swap_remove(i);
     }
 };

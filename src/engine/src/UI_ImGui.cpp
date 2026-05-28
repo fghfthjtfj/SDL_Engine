@@ -1,17 +1,18 @@
 ﻿#include "PCH.h"
 #include "UI_ImGui.h"
+#include "EngineContext.h"
 
-void UI_ImGui::Iterate(ObjectManager* objectManager, CameraManager* cameraManager)
+void UI_ImGui::Iterate(EngineContext* ctx)
 {
     ImGui::Begin("Debug");
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::Separator();
 
-    DrawCameraPanel(cameraManager);
+    DrawCameraPanel(ctx->GetCameraManager());
     ImGui::Separator();
-    DrawObjectsPanel(objectManager);
+    DrawObjectsPanel(ctx);
     ImGui::Separator();
-    DrawLightsPanel(objectManager);
+    DrawLightsPanel(ctx->GetObjectManager());
     ImGui::End();
 }
 
@@ -31,17 +32,20 @@ void UI_ImGui::DrawCameraPanel(CameraManager* cameraManager)
     }
 }
 
-void UI_ImGui::DrawObjectsPanel(ObjectManager* objectManager)
+void UI_ImGui::DrawObjectsPanel(EngineContext* ctx)
 {
     if (!ImGui::CollapsingHeader("Objects")) return;
 
-	SceneData* scene = objectManager->GetActiveScene();
-    
+    ObjectManager* objectManager = ctx->GetObjectManager();
+    SceneData* scene = objectManager->GetActiveScene();
+
     if (ImGui::TreeNode("Mesh Objects"))
     {
         int index = 0;
-        objectManager->ForEach<Positions, MaterialComponent, ModelComponent>(scene,  // ← свой компонент
-            [&index](SoAElement<Positions> pos_el, MaterialComponent&, ModelComponent&)
+        std::vector<Entity> to_delete;
+
+        objectManager->ForEach<Positions, MaterialComponent, ModelComponent>(scene,
+            [&index, &to_delete](Entity e, SoAElement<Positions> pos_el, MaterialComponent&, ModelComponent&)
         {
             Positions& P = pos_el.container();
             size_t i = pos_el.i();
@@ -51,6 +55,8 @@ void UI_ImGui::DrawObjectsPanel(ObjectManager* objectManager)
 
             if (ImGui::TreeNode(label))
             {
+                if (ImGui::Button("Delete")) to_delete.push_back(e);
+
                 float pos[3] = { P.w[i], P.d[i], P.h[i] };
                 if (ImGui::DragFloat3("Offset", pos, 0.05f))
                 {
@@ -61,6 +67,9 @@ void UI_ImGui::DrawObjectsPanel(ObjectManager* objectManager)
                 ImGui::TreePop();
             }
         });
+
+        for (Entity e : to_delete) ctx->DeleteEntity(scene, e);
+
         ImGui::TreePop();
     }
 }

@@ -64,6 +64,19 @@ ModelData* EngineContext::CreateModel(const ModelName& name, const char* model_p
 	return model_manager->CreateModel(name, model_path, index_path);
 }
 
+void EngineContext::DeleteEntity(SceneData* scene, Entity e)
+{
+	const bool needs_pib = object_manager->Has<ModelComponent>(scene, e)
+		&& object_manager->Has<Positions>(scene, e);
+
+	if (needs_pib && scene == object_manager->GetActiveScene()) {
+		batch_builder->SetPIBNeedUpload(true);
+		batch_builder->SetDirtyBatches(true);
+	}
+
+	object_manager->DeleteEntity(scene, e);
+}
+
 void EngineContext::CreateGraphicsPipelines()
 {
 	if (!shader_manager->IsDirtyGraphicsPipelines()) {

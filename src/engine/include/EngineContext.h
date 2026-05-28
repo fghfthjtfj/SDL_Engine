@@ -43,6 +43,9 @@ public:
 
 		return object_manager->CreateEntity(scene_name, std::forward<Components>(comps)...);
 	}
+
+	void DeleteEntity(SceneData* scene, Entity e);
+
 	BufferManager* GetBufferManager() const { return buffer_manager; }
 	TextureManager* GetTextureManager() const { return texture_manager; }
 	ShaderManager* GetShaderManager() const { return shader_manager; }

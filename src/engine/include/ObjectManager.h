@@ -52,13 +52,20 @@ public:
 	void SetSceneState(const SceneName& scene_name, bool is_active);
     SceneData* GetActiveScene();
     SceneData* GetScene(const SceneName& name);
-    bool CheckNewObjects() { return dirty_entity; };
-	void NewObjectsCommit() { dirty_entity = false; };
 
+    void DeleteEntity(const SceneName& name, Entity e);
+    void DeleteEntity(SceneData* scene, Entity e);
+
+
+    bool CheckNewObjects() { return dirty_entity; };
+    void NewObjectsCommit() { dirty_entity = false; };
     SceneData* operator[](const std::string& name);
 
 
 private:
+    void RecordSwap(SceneData* scene, Archetype* arch,
+        uint32_t removed_local, uint32_t source_local);
+
     template<typename... Components>
     void add_components(Archetype& arch, Components&&... comps);
 

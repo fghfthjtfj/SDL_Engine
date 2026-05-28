@@ -13,6 +13,7 @@ public:
 	uint32_t CalculateIndirectSize(PassManager* pm);
 	void StoreIndirect(BufferManager* bm, PassManager* pm, UploadTask* task);
 	uint32_t AskNumCommands(PassManager* pm);
+	void MarkDirty() { dirty = true; }
 private:
 	uint32_t total_size = 0;
 	bool dirty = true;

@@ -3,13 +3,15 @@
 #include "ObjectManager.h"
 #include "CameraManager.h"
 
+class EngineContext;
+
 class UI_ImGui
 {
 public:
-    static void Iterate(ObjectManager* objectManager, CameraManager* cameraManager);
+    static void Iterate(EngineContext* ctx);
 
 private:
     static void DrawCameraPanel(CameraManager* cameraManager);
-    static void DrawObjectsPanel(ObjectManager* objectManager);
+    static void DrawObjectsPanel(EngineContext* ctx);
     static void DrawLightsPanel(ObjectManager* objectManager);
 };

@@ -114,17 +114,24 @@ BatchBuilder::BatchBuilder()
 {
 }
 
-void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager, ObjectManager* om, SceneData* scene)
+bool BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager, ObjectManager* om, SceneData* scene)
 {
     if (!dirty_batches) {
-        return;
+        return false;
     }
 
     if (!scene) {
         SDL_Log("BuildBatches called with null scene!");
-        return;
+        return false;
     }
-    uint32_t entity_global_id = 0;  // будет индексом в models[] / posIndex[]
+
+    // РЎР±СЂРѕСЃ РЅР°РєРѕРїР»РµРЅРЅС‹С… Р±Р°С‚С‡РµР№: СЂРµР±РёР»Рґ РґРѕР»Р¶РµРЅ СЃС‚СЂРѕРёС‚СЊ СЃ РЅСѓР»СЏ, РёРЅР°С‡Рµ РїСЂРё РїРѕРІС‚РѕСЂРЅРѕРј РІС…РѕРґРµ
+    // instanceCount/pib_sub_buffer Р·Р°РґРІР°РёРІР°СЋС‚СЃСЏ РїРѕРІРµСЂС… СЃС‚Р°СЂС‹С… РґР°РЅРЅС‹С….
+    for (RenderPassStep* rp : pass_manager->GetOrderedRenderPasses()) {
+        rp->shader_batches.clear();
+    }
+
+    uint32_t entity_global_id = 0;  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ models[] / posIndex[]
 
     om->ForEach<MaterialComponent, ModelComponent, Positions>(
         scene,
@@ -146,7 +153,7 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                 RenderPassStep* rp = sp->spd->associated_render_pass;
                 if (!rp) continue;
 
-                // Получаем или создаём ShaderBatch для этого sp в этом проходе
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ShaderBatch пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ sp пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 auto& shader_map = rp->shader_batches;
                 auto sp_key = HashShaderBatchKey(sp);
                 auto it = shader_map.find(sp_key);
@@ -161,10 +168,10 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
 
                 ShaderBatchData& sb = shader_map[sp_key];
 
-                // Хэш материала (по текстурам)
+                // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
                 AtlasBatchKey atlas_key = sp->required_slots.empty() ? 0 : HashAtlasBatchKey(material);
 
-                // Получаем или создаём AtlasBatchData
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ AtlasBatchData
                 auto& atlas_map = sb.atlases_batches;
                 auto atlas_it = atlas_map.find(atlas_key);
                 if (atlas_it == atlas_map.end())
@@ -192,7 +199,7 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                 auto& tex_map = atlas_batch.texture_batches;
                 auto texb_it = tex_map.find(tex_key);
                 if (texb_it == tex_map.end()) {
-                    // Заполняем uvl только один раз
+                    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ uvl пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
                     TextureBatchData new_texb{};
                     new_texb.texture_uvl.reserve(material->textures.size());
                     for (const auto& role : sp->required_slots) {
@@ -209,10 +216,10 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                 }
 
                 TextureBatchData& tex_batch = tex_map[tex_key];
-                // Хэш модели
+                // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                 ModelBatchKey model_key = HashModelBatchKey(&submesh);
 
-                // Получаем или создаём ModelBatchData
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ModelBatchData
                 auto& model_map = tex_batch.model_batches;
                 auto model_it = model_map.find(model_key);
                 if (model_it == model_map.end())
@@ -220,7 +227,7 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                     ModelBatchData new_model{};
                     new_model.submesh = &submesh;
                     new_model.instanceCount = 0;
-                    new_model.pib_sub_buffer.reserve(16);  // ожидаемый размер
+                    new_model.pib_sub_buffer.reserve(16);  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                     model_map[model_key] = std::move(new_model);
                 }
 
@@ -238,6 +245,7 @@ void BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
     FinilizeRenderBatches(pass_manager);
     dirty_batches = false;
     need_PIB_upload = true;
+    return true;
 }
 void BatchBuilder::FinilizeRenderBatches(PassManager* pass_manager)
 {
@@ -345,7 +353,7 @@ void BatchBuilder::BuildComputeBatches(PipeManager* pm, ShaderManager* sm) {
     auto& compute_programs = sm->GetComputeShaderPrograms();
     for (auto& sp : compute_programs) {
         SDL_GPUComputePipeline* pipe = pm->GetComputePipeline(sp.get());
-        if (!pipe) { /* лог + assert */ continue; }
+        if (!pipe) { /* пїЅпїЅпїЅ + assert */ continue; }
 
         ComputePassStep* cmp = sp->associated_compute_pass;
         if (!cmp) continue;

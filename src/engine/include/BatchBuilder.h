@@ -10,7 +10,7 @@ struct SceneData;
 class BatchBuilder {
 public:
 	BatchBuilder();
-	void BuildRenderBatches(PipeManager* pm, PassManager* pass_manager, ObjectManager* om, SceneData* scene);
+	bool BuildRenderBatches(PipeManager* pm, PassManager* pass_manager, ObjectManager* om, SceneData* scene);
 	void BuildComputeBatches(PipeManager* pm, ShaderManager* sm);
 	void BuildComputePrepassBatches(PipeManager* pm, ShaderManager* sm);
 	bool CheckPIBNeedUpload() { return need_PIB_upload; };
