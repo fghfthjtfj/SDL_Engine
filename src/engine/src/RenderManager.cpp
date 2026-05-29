@@ -111,7 +111,7 @@ void PassManager::ExecutePrepassesSteps(SDL_GPUCommandBuffer* cb, uint8_t pass_f
 	}
 }
 
-void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass_step, BufferManager* bm, uint32_t additional_offset)
+void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass_step, BufferManager* bm, uint32_t additional_offset, const void* push_data_raw)
 {
 	SDL_GPURenderPass* rp = nullptr;
 	rp = SDL_BeginGPURenderPass(cb,
@@ -122,7 +122,7 @@ void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassSte
 		SDL_Log("PassManager::ExecutePassesSteps: Failed to begin render pass!");
 		return;
 	}
-	ExecuteRenderBatches(cb, rp, *render_pass_step, bm, additional_offset);
+	ExecuteRenderBatches(cb, rp, *render_pass_step, bm, additional_offset, push_data_raw);
 	SDL_EndGPURenderPass(rp);
 	
 }
@@ -214,7 +214,7 @@ PassManager::~PassManager()
 	render_steps.clear();
 }
 
-inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* rp, const RenderPassStep& render_pass_step, BufferManager* bm, uint32_t additional_offset)
+inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* rp, const RenderPassStep& render_pass_step, BufferManager* bm, uint32_t additional_offset, const void* push_data_raw)
 {
 	int draw_calls = 0;
 	for (auto& [_, shader_batch] : render_pass_step.shader_batches)
@@ -224,6 +224,12 @@ inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPUR
 
 		bm->BindGPUVertexBuffer(rp, 0, 0);
 		bm->BindGPUIndexBuffer(rp, 0);
+
+		PushConstantBinder binder{ cb };
+		if (shader_batch.push_func) {
+			shader_batch.push_func(binder, push_data_raw);
+		}
+		const uint32_t uvl_slot = binder.frag_count;
 
 		if (!shader_batch.vertexStorageBuffers.empty()) {
 			bm->BindGPUVertexStorageBuffers(rp, 0, shader_batch.vertexStorageBuffers, render_frame);
@@ -250,7 +256,7 @@ inline void PassManager::ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPUR
 						if (texture_batch.texture_uvl[i])
 							padded[i] = *texture_batch.texture_uvl[i];
 					}
-					SDL_PushGPUFragmentUniformData(cb, 0, padded, sizeof(padded));
+					SDL_PushGPUFragmentUniformData(cb, uvl_slot, padded, sizeof(padded));
 				}
 				else {
 					//SDL_Log("Texture batch UVL data does not exist or is empty");

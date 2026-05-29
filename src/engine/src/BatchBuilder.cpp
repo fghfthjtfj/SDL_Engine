@@ -131,7 +131,7 @@ bool BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
         rp->shader_batches.clear();
     }
 
-    uint32_t entity_global_id = 0;  // ����� �������� � models[] / posIndex[]
+    uint32_t entity_global_id = 0; 
 
     om->ForEach<MaterialComponent, ModelComponent, Positions>(
         scene,
@@ -153,13 +153,13 @@ bool BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                 RenderPassStep* rp = sp->spd->associated_render_pass;
                 if (!rp) continue;
 
-                // �������� ��� ������ ShaderBatch ��� ����� sp � ���� �������
                 auto& shader_map = rp->shader_batches;
                 auto sp_key = HashShaderBatchKey(sp);
                 auto it = shader_map.find(sp_key);
                 if (it == shader_map.end())
                 {
                     ShaderBatchData new_batch{};
+					new_batch.push_func = sp->push_func;
                     new_batch.pipeline = pm->GetGraphicPipeline(sp);
                     new_batch.vertexStorageBuffers = sp->vertex_shader_buffers;
                     new_batch.fragmentStorageBuffers = sp->fragment_shader_buffers;
@@ -199,7 +199,6 @@ bool BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                 auto& tex_map = atlas_batch.texture_batches;
                 auto texb_it = tex_map.find(tex_key);
                 if (texb_it == tex_map.end()) {
-                    // ��������� uvl ������ ���� ���
                     TextureBatchData new_texb{};
                     new_texb.texture_uvl.reserve(material->textures.size());
                     for (const auto& role : sp->required_slots) {

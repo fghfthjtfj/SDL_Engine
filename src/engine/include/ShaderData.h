@@ -43,10 +43,19 @@ using namespace ShaderBase;
 
 struct PushConstantBinder {
     SDL_GPUCommandBuffer* cb;
+    mutable Uint32 vert_count = 0;
+    mutable Uint32 frag_count = 0;
 
-    template<typename T>
-    void Push(Uint32 slot, const T& data) const {
-        SDL_PushGPUComputeUniformData(cb, slot, &data, sizeof(T));
+    // compute Ч как было, €вный слот
+    template<typename T> void Push(Uint32 slot, const T& d) const {
+        SDL_PushGPUComputeUniformData(cb, slot, &d, sizeof(T));
+    }
+    // graphics Ч авто-слот + счЄт (mutable, чтобы л€мбда осталась const, как в compute)
+    template<typename T> void PushVertex(const T& d) const {
+        SDL_PushGPUVertexUniformData(cb, vert_count++, &d, sizeof(T));
+    }
+    template<typename T> void PushFragment(const T& d) const {
+        SDL_PushGPUFragmentUniformData(cb, frag_count++, &d, sizeof(T));
     }
 };
 
@@ -134,7 +143,15 @@ struct ShaderProgram {
     // ќжидаемые типы (по назначению) текстур дл€ этого шейдера. Ќапример, если в шейдере есть uniform sampler2D u_albedoTexture, то в required_slots будет TextureSlotRole::Albedo.
 	// Expected texture types (by role) for this shader. For example, if the shader has a uniform sampler2D u_albedoTexture, then required_slots will contain TextureSlotRole::Albedo.
     std::vector<TextureSlotRole> required_slots;
+
+    std::function<void(const PushConstantBinder&, const void*)> push_func;
+    template<typename T, typename Fn> void BindPushConstants(Fn&& fn) {
+        push_func = [fn = std::forward<Fn>(fn)](const PushConstantBinder& b, const void* raw) {
+            fn(b, *static_cast<const T*>(raw));
+        };
+    }
 	ShaderProgramDescription* spd;
+
 };
 
 

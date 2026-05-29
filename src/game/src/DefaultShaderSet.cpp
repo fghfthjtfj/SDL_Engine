@@ -93,7 +93,10 @@ void DefaultShaderProgramSet::SetDefaultShadowShaderProgram(BufferManager* bm, S
         fs_2, {},
         {}
     );
-
+    sp_shadow->BindPushConstants<DefaultRenderPassNamespace::ShadowPushData>(
+        [](const PushConstantBinder& b, DefaultRenderPassNamespace::ShadowPushData data) {
+        b.PushFragment(data);   // слот 0
+    });
  //   ShaderProgramDescription* spd_shadow_old =
  //       sm->CreateShaderProgramDescription("spd_shadow_old")
  //       ->UsedInRenderPass(pm->GetRenderPassStep("DEBUG_SHADOW_PASS"))

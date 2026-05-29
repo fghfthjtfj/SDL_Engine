@@ -33,6 +33,7 @@ struct AtlasBatchData {
 };
 
 struct ShaderBatchData {
+    std::function<void(const PushConstantBinder&, const void*)> push_func = {};
     std::unordered_map<AtlasBatchKey, AtlasBatchData> atlases_batches;
 	std::vector<BufferData*> vertexBuffers;
     std::vector<BufferData*> vertexStorageBuffers;

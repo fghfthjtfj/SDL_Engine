@@ -19,13 +19,6 @@ namespace DefaultRenderPassNamespace
     bool shadow_pass_inited = false;
 	bool main_pass_inited = false;
 
-    struct alignas(16) ShadowPushData
-    {
-        Uint32 cameraIndex;
-        float  max_range;
-        // Пады можно опустить — alignas(16) заставит компилятор дополнить до 16 байт
-    };
-
     static SDL_GPUTexture* main_color_half = nullptr; // левая половина — сцена
     static SDL_GPUTexture* debug_color_half = nullptr; // правая половина — debug-затычка
     static SDL_GPUTexture* split_depth_half = nullptr; // общий depth обеих половин
@@ -72,8 +65,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(EngineContext* ct
 				push_data.cameraIndex = cameraIndex;
                 push_data.max_range = light.light_data.GetMaxDistance();
                 SDL_PushGPUVertexUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
-				SDL_PushGPUFragmentUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
-                pm->RenderPassStandardBody(cb, &rp, bm, 0);
+                pm->RenderPassStandardBody(cb, &rp, bm, 0, &push_data);
 
                 auto cp = SDL_BeginGPUCopyPass(cb);
                 SDL_GPUTextureLocation src = {
@@ -99,9 +91,8 @@ void DefaultRenderPassNamespace::SetDefaultShadowPCFRenderPass(EngineContext* ct
 					push_data.cameraIndex = cameraIndex;
 					push_data.max_range = light.light_data.GetMaxDistance();
                     SDL_PushGPUVertexUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
-                    SDL_PushGPUFragmentUniformData(cb, 0, &push_data, sizeof(ShadowPushData));
 
-                    pm->RenderPassStandardBody(cb, &rp, bm, 0);
+                    pm->RenderPassStandardBody(cb, &rp, bm, 0, &push_data);
 
                     auto cp = SDL_BeginGPUCopyPass(cb);
                     SDL_GPUTextureLocation src = {
@@ -157,7 +148,7 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(EngineContext* ctx)
         MAIN_PASS,
         [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
-        pm->RenderPassStandardBody(cb, &rp, bm, 0);
+        pm->RenderPassStandardBody(cb, &rp, bm, 0, nullptr);
     },
         std::move(main_rptd),
         20
@@ -219,7 +210,7 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(EngineContext* ctx,
         "SCENE_PASS",
         [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
-        pm->RenderPassStandardBody(cb, &rp, bm, 0);
+        pm->RenderPassStandardBody(cb, &rp, bm, 0, nullptr);
     },
         std::move(scene_rptd),
         20
@@ -238,7 +229,7 @@ void DefaultRenderPassNamespace::SetDefaultMainRenderPass(EngineContext* ctx,
         [pm, bm](SDL_GPUCommandBuffer* cb, PassManager* pm, RenderPassStep& rp)
     {
         // ЗАТЫЧКА: пока та же сцена; сюда позже воткнёшь debug-пайплайн
-        pm->RenderPassStandardBody(cb, &rp, bm, 0);
+        pm->RenderPassStandardBody(cb, &rp, bm, 0, nullptr);
     },
         std::move(debug_rptd),
         25
@@ -319,7 +310,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(EngineContext* ct
             if (light.needsUpdate) {
                 SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
                 rp.renderPassTexsData.colorTargetInfo.layer_or_depth_plane = cameraIndex;
-                pm->RenderPassStandardBody(cb, &rp, bm, 0);
+                pm->RenderPassStandardBody(cb, &rp, bm, 0, &cameraIndex);
             };
             cameraIndex++;
         }
@@ -333,7 +324,7 @@ void DefaultRenderPassNamespace::SetDefaultShadowVSMRenderPass(EngineContext* ct
                     SDL_PushGPUVertexUniformData(cb, 0, &cameraIndex, sizeof(Uint32));
 
                     rp.renderPassTexsData.colorTargetInfo.layer_or_depth_plane = cameraIndex;
-                    pm->RenderPassStandardBody(cb, &rp, bm, 0);
+                    pm->RenderPassStandardBody(cb, &rp, bm, 0, &cameraIndex);
                 }
                 cameraIndex++;
             }

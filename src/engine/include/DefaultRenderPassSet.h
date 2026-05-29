@@ -17,6 +17,12 @@ namespace DefaultRenderPassNamespace
     inline constexpr const char* SHADOW_BLUR_PASS = "_DefaultBlurPass";
     inline const std::string SHADOW_DEPTH_FLAT_ARRAY = "shadow_depth_flat_array";
 
+
+    struct alignas(16) ShadowPushData
+    {
+        Uint32 cameraIndex;
+        float  max_range;
+    };
     void SetDefaultShadowPCFRenderPass(EngineContext* ctx);
     void SetDefaultShadowVSMRenderPass(EngineContext* ctx);
 

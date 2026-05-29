@@ -28,7 +28,7 @@ public:
 	void ExecutePrepassesSteps(SDL_GPUCommandBuffer* cb, uint8_t pass_frame);
 	// Начинает и завершает SDL_GPURenderPass
 	// Starts and end SDL_GPURenderPass
-	void RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass, BufferManager* bm, uint32_t additional_offset); // ДОБАВИТЬ АНАЛОГИЧНУЮ COMPUTE STEP ЛОГИКУ КОНСТАНТ!
+	void RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassStep* render_pass, BufferManager* bm, uint32_t additional_offset, const void* push_data_raw);
 	void WaitComputePrepass(SDL_GPUDevice* dev);
 	// Начинает и завершает SDL_GPUComputePass
 	// Starts and end SDL_GPUComputePass
@@ -46,7 +46,7 @@ public:
 	~PassManager();
 
 private:
-	inline void ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* SDL_rp, const RenderPassStep& rp, BufferManager* bm, uint32_t additional_offset);
+	void ExecuteRenderBatches(SDL_GPUCommandBuffer* cb, SDL_GPURenderPass* SDL_rp, const RenderPassStep& rp, BufferManager* bm, uint32_t additional_offset, const void* push_data_raw);
 	std::unordered_map<RenderPassName, std::unique_ptr<RenderPassStep>> render_steps;
 	std::unordered_map<ComputePassName, std::unique_ptr<ComputePassStep>> compute_steps;
 	std::unordered_map<ComputePrepassName, std::unique_ptr<ComputePassStep>> compute_prepass_steps;
