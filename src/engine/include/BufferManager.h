@@ -11,12 +11,12 @@
 #include "BufferUpdateStruct.h"
 
 namespace DefaultBuffersNames {
-	inline constexpr const char* DEFAULT_VERTEX_BUFFER = "DefaultVertexBuffer";
-	inline constexpr const char* DEFAULT_INDEX_BUFFER = "DefaultIndexBuffer";
-	inline constexpr const char* DEFAULT_TRANSFORM_BUFFER = "DefaultTransformBuffer";
-	inline constexpr const char* DEFAULT_CAMERA_BUFFER = "cameraBuffer";
-	inline constexpr const char* DEFAULT_LIGHT_BUFFER = "lightBuffer";
-	inline constexpr const char* DEFAULT_POSITION_INDEX_BUFFER = "DefaultPositionIndexBuffer";
+	inline constexpr const char* DEFAULT_VERTEX_BUFFER = "_DefaultVertexBuffer";
+	inline constexpr const char* DEFAULT_INDEX_BUFFER = "_DefaultIndexBuffer";
+	inline constexpr const char* DEFAULT_TRANSFORM_BUFFER = "_DefaultTransformBuffer";
+	inline constexpr const char* DEFAULT_CAMERA_BUFFER = "_cameraBuffer";
+	inline constexpr const char* DEFAULT_LIGHT_BUFFER = "_lightBuffer";
+	inline constexpr const char* DEFAULT_POSITION_INDEX_BUFFER = "_DefaultPositionIndexBuffer";
 	inline constexpr const char* DEFAULT_LIGHT_CAMERA_BUFFER = "DefaultLightCameraBuffer";
 
 	inline constexpr const char* DEFAULT_INDIRECT_BUFFER = "DefaultIndirectBuffer";

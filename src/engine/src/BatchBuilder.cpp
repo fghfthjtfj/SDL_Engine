@@ -150,7 +150,7 @@ bool BatchBuilder::BuildRenderBatches(PipeManager* pm, PassManager* pass_manager
                     SDL_Log("BatchBuilder::Using non existing shader program in material");
                     continue;
                 }
-                RenderPassStep* rp = sp->spd->associated_render_pass;
+                RenderPassStep* rp = sp->associated_render_pass;
                 if (!rp) continue;
 
                 auto& shader_map = rp->shader_batches;

@@ -68,10 +68,10 @@ SDL_GPUGraphicsPipeline* PipeManager::GetOrCreatePipeline(ShaderProgram* sp)
 
 
     SDL_GPUColorTargetDescription ctd;
-    if(sp->spd->associated_render_pass->renderPassTexsData.numColorTargets > 0) {
+    if(sp->associated_render_pass->renderPassTexsData.numColorTargets > 0) {
         SDL_zero(ctd);
-        if (sp->spd->associated_render_pass->renderPassTexsData.color_format != SDL_GPU_TEXTUREFORMAT_INVALID) {
-            ctd.format = sp->spd->associated_render_pass->renderPassTexsData.color_format;
+        if (sp->associated_render_pass->renderPassTexsData.color_format != SDL_GPU_TEXTUREFORMAT_INVALID) {
+            ctd.format = sp->associated_render_pass->renderPassTexsData.color_format;
         }
         else {
             ctd = MakeDefaultColorTarget();
@@ -94,7 +94,7 @@ SDL_GPUGraphicsPipeline* PipeManager::GetOrCreatePipeline(ShaderProgram* sp)
     }
 
     pci.target_info.has_depth_stencil_target = true;
-    pci.target_info.depth_stencil_format = sp->spd->associated_render_pass->renderPassTexsData.depth_format;
+    pci.target_info.depth_stencil_format = sp->associated_render_pass->renderPassTexsData.depth_format;
 
 	SDL_GPUGraphicsPipeline* pipe = nullptr;
     pipe = SDL_CreateGPUGraphicsPipeline(dev, &pci);

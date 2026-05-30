@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <string>
 #include "SDL3/SDL_gpu.h"
-#include "Aliases.h"
 #include <memory>
 
 
@@ -18,23 +17,22 @@ public:
 	VertexShaderData CreateVertexShader(const char* hlsl_path, std::initializer_list<VertexBufferBinding> bindings);
 	FragmentShaderData CreateFragmentShader(const char* path);
 	
-	ShaderProgram* CreateShaderProgram(const std::string& name, ShaderProgramDescription* spd, BufferManager* bm,
-		VertexShaderData vs, std::initializer_list<BufferDataName> vertex_shader_buffers,
-		FragmentShaderData fs, std::initializer_list<BufferDataName> fragment_shader_buffers,
-		std::initializer_list<TextureSlotRole> texture_slots
-	);
+	ShaderProgram* CreateShaderProgram(
+		const std::string& name, ShaderProgramDescription* spd, RenderPassStep* associated_pass,
+		VertexShaderData vs, std::vector<BufferData*> vertex_shader_buffers,
+		FragmentShaderData fs, std::vector<BufferData*> fragment_shader_buffers,
+		std::initializer_list<TextureSlotRole> texture_slots);
+
 	ComputeShaderData CreateComputeShader(const char* path);
 	// Порядок создание ComputeShaderProgram не определяет порядок их выполнения в проходе!
 	// The order in which ComputeShaderPrograms are created does not determine the order in which they are executed in a pass!
-	ComputeShaderProgram* CreateComputeShaderProgram(const std::string& name,
-		ComputeShaderData cs, 
-		std::initializer_list<BufferData*> rw_storage_buffers,
-		std::initializer_list<BufferData*> ro_storage_buffers,
-		std::initializer_list<ComputeShaderProgram::ComputeRWTextureBinding> rw_storage_textures,
-		std::initializer_list<TextureAtlas*> ro_storage_textures,
-		std::initializer_list<TextureAtlas*> texture_samplers,
+	ComputeShaderProgram* CreateComputeShaderProgram(const std::string& name, ComputeShaderData csd, 
+		std::vector<BufferData*> rw_storage_buffers, 
+		std::vector<BufferData*> ro_storage_buffers, 
+		std::vector<ComputeShaderProgram::ComputeRWTextureBinding> rw_storage_textures, 
+		std::vector<TextureAtlas*> ro_storage_textures, 
+		std::vector<TextureAtlas*> texture_samplers, 
 		ComputePassStep* associated_compute_pass);
-
 
 	VertexShaderData CreateVertexShaderFromSPV(const char* path, std::initializer_list<VertexBufferBinding> bindings);
 	FragmentShaderData CreateFragmentShaderFromSPV(const char* spv_path);

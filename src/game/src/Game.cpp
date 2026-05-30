@@ -53,8 +53,8 @@ SDL_AppResult Game::MainInit()
 
     {
         using namespace DefaultShaderProgramSet;
-        SetMainShaderProgram(bufferManager, shaderManager, passManager);
-        SetDefaultShadowShaderProgram(bufferManager, shaderManager, passManager);
+        SetMainShaderProgram(ctx);
+        SetDefaultShadowShaderProgram(ctx);
     }
     
     auto material_car = ctx->CreateMaterial("car", {

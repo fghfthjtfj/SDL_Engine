@@ -7,21 +7,21 @@ class TextureManager;
 class CameraManager;
 class ObjectManager;
 class BatchBuilder;
+class EngineContext;
 class LightDataModule;
 
 namespace DefaultShaderProgramSet
 {
     // Render shader programs
-    void SetMainShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm);
-    void SetDefaultShadowShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm);
-    void SetTransparentShaderProgram(BufferManager* bm, ShaderManager* sm, PassManager* pm);
+    void SetMainShaderProgram(EngineContext* ctx);
+    void SetDefaultShadowShaderProgram(EngineContext* ctx);
+    void SetTransparentShaderProgram(EngineContext* ctx);
 
     // Compute shader programs
-    void SetCullingZerosPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm);
-    void SetCullingCountPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm, CameraManager* cm, ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm);
-    void SetCullingOffsetPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm);
-    void SetCullingOutIndirectPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm, ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm);
-    void SetCullingWritePrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm, CameraManager* cm, ObjectManager* om, BatchBuilder* bb, LightDataModule* ldm);
-
-    void SetShadowBlurPrograms(BufferManager* bm, ShaderManager* sm, PassManager* pm, TextureManager* tm, ObjectManager* om, LightDataModule* ldm);
+    void SetCullingZerosPrograms(EngineContext* ctx);
+    void SetCullingCountPrograms(EngineContext* ctx, LightDataModule* ldm);
+    void SetCullingOffsetPrograms(EngineContext* ctx);
+    void SetCullingOutIndirectPrograms(EngineContext* ctx, LightDataModule* ldm);
+    void SetCullingWritePrograms(EngineContext* ctx, LightDataModule* ldm);
+    void SetShadowBlurPrograms(EngineContext* ctx, LightDataModule* ldm);
 }

@@ -100,7 +100,6 @@ struct RasterizerStateBiasParams {
 
 struct ShaderProgramDescription
 {
-    RenderPassStep* associated_render_pass = nullptr;
     SDL_GPUCullMode           cull_mode = SDL_GPU_CULLMODE_NONE;
     RasterizerStateBiasParams rasterizer_bias;
     bool                      depth_test = true;
@@ -108,7 +107,6 @@ struct ShaderProgramDescription
     bool                      stencil_test = false;
     bool                      color_blend = false;
 
-    ShaderProgramDescription* UsedInRenderPass(RenderPassStep* p);
 
     ShaderProgramDescription* BehavesAsShadowCaster();
     ShaderProgramDescription* BehavesAsOpaqueGeometry();
@@ -151,6 +149,7 @@ struct ShaderProgram {
         };
     }
 	ShaderProgramDescription* spd;
+    RenderPassStep* associated_render_pass = nullptr;
 
 };
 
@@ -158,6 +157,11 @@ struct ShaderProgram {
 struct ComputeShaderProgram {
     struct ComputeRWTextureBinding {
         TextureAtlas* texture_atlas = nullptr;
+        Uint32 mip_level = 0;
+        Uint32 layer = 0;
+    };
+    struct ComputeRWTextureBindingParametr {
+        std::string texture_atlas = "";
         Uint32 mip_level = 0;
         Uint32 layer = 0;
     };

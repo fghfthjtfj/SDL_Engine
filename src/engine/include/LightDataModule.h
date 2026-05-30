@@ -2,7 +2,6 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include "LightStruct.h"
-#include "BaseComponents.h"
 
 struct UploadTask;
 struct SceneData;

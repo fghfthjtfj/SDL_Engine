@@ -27,9 +27,10 @@ ShaderProgramDescription* ShaderManager::CreateShaderProgramDescription(const st
     return raw;
 }
 
-ShaderProgram* ShaderManager::CreateShaderProgram(const std::string& name, ShaderProgramDescription* spd, BufferManager* bm,
-    VertexShaderData vs, std::initializer_list<const char*> vertex_shader_buffers, 
-    FragmentShaderData fs, std::initializer_list<const char*> fragment_shader_buffers, 
+ShaderProgram* ShaderManager::CreateShaderProgram(
+    const std::string& name, ShaderProgramDescription* spd, RenderPassStep* associated_pass,
+    VertexShaderData vs, std::vector<BufferData*> vertex_shader_buffers,
+    FragmentShaderData fs, std::vector<BufferData*> fragment_shader_buffers,
     std::initializer_list<TextureSlotRole> texture_slots)
 {
     auto it = shader_programs.find(name);
@@ -41,18 +42,11 @@ ShaderProgram* ShaderManager::CreateShaderProgram(const std::string& name, Shade
     auto program = std::make_unique<ShaderProgram>();
     program->vs = vs;
     program->fs = fs;
-	program->vertex_shader_buffers.reserve(vertex_shader_buffers.size());
-	for (const char* buffer_name : vertex_shader_buffers) {
-		program->vertex_shader_buffers.push_back(bm->GetBufferData(buffer_name));
-	}
-	program->fragment_shader_buffers.reserve(fragment_shader_buffers.size());
-	for (const char* buffer_name : fragment_shader_buffers) {
-		program->fragment_shader_buffers.push_back(bm->GetBufferData(buffer_name));
-	}
-    for (TextureSlotRole role : texture_slots) {
-        program->required_slots.push_back(role);
-	}
+	program->vertex_shader_buffers = std::move(vertex_shader_buffers);
+	program->fragment_shader_buffers = std::move(fragment_shader_buffers);
+	program->required_slots.assign(texture_slots);
 	program->spd = spd;
+    program->associated_render_pass = associated_pass;
     ShaderProgram* ptr = program.get();
 
     shader_programs.emplace(name, std::move(program));
@@ -62,10 +56,10 @@ ShaderProgram* ShaderManager::CreateShaderProgram(const std::string& name, Shade
 }
 
 ComputeShaderProgram* ShaderManager::CreateComputeShaderProgram(const std::string& name, ComputeShaderData cs, 
-    std::initializer_list<BufferData*> rw_storage_buffers, std::initializer_list<BufferData*> ro_storage_buffers, 
-    std::initializer_list<ComputeShaderProgram::ComputeRWTextureBinding> rw_storage_textures,
-    std::initializer_list<TextureAtlas*> ro_storage_textures,
-    std::initializer_list<TextureAtlas*> texture_samplers, 
+    std::vector<BufferData*> rw_storage_buffers, std::vector<BufferData*> ro_storage_buffers, 
+    std::vector<ComputeShaderProgram::ComputeRWTextureBinding> rw_storage_textures,
+    std::vector<TextureAtlas*> ro_storage_textures,
+    std::vector<TextureAtlas*> texture_samplers, 
     ComputePassStep* associated_compute_pass)
 {
     auto it = compute_shader_programs_by_name.find(name);
@@ -78,12 +72,12 @@ ComputeShaderProgram* ShaderManager::CreateComputeShaderProgram(const std::strin
     result->cs = cs;
     result->associated_compute_pass = associated_compute_pass;
 
-    result->ro_storage_buffers.assign(ro_storage_buffers);
-    result->rw_storage_buffers.assign(rw_storage_buffers);
-    result->rw_storage_textures.assign(rw_storage_textures);
+    result->ro_storage_buffers = std::move(ro_storage_buffers);
+    result->rw_storage_buffers = std::move(rw_storage_buffers);
+    result->rw_storage_textures = std::move(rw_storage_textures);
 
-    result->ro_storage_textures.assign(ro_storage_textures);
-    result->texture_samplers.assign(texture_samplers);
+    result->ro_storage_textures = std::move(ro_storage_textures);
+    result->texture_samplers = std::move(texture_samplers);
 
     result->debug_name = name;
 
@@ -142,16 +136,6 @@ ShaderManager::~ShaderManager()
 	}
 	shader_programs.clear();
 	SDL_ShaderCross_Quit();
-}
-
-ShaderProgramDescription* ShaderProgramDescription::UsedInRenderPass(RenderPassStep* p)
-{
-    if (!p) {
-        SDL_Log("ShaderManager::Creating shader program description with non existing pass");
-        assert(p != nullptr && "ShaderProgramDescription::UsedInRenderPass: passed nullptr RenderPassStep");
-    }
-    this->associated_render_pass = p;
-    return this;
 }
 
 ShaderProgramDescription* ShaderProgramDescription::BehavesAsShadowCaster() {

@@ -19,6 +19,7 @@ public:
 	TextureAtlas* CreateTextureAtlas(const AtlasName& name, SDL_GPUTextureCreateInfo tci, const std::string& sampler_name);
 	TextureAtlas* CreateTextureAtlas(const AtlasName& name, const AtlasName& existing_atlas_name, const std::string& sampler_name);
 	TextureHandle* CreateTextureFromFile(const TextureName& name, const AtlasName& atlas_name, const char* path);
+	TextureAtlas* GetTextureAtlas(const AtlasName& name) const { return texture_manager->GetTextureAtlas(name); }
 
 	Material* CreateMaterial(std::string name, std::initializer_list<std::pair<TextureSlotRole, TextureName>> textures, std::initializer_list<ShaderName> shaders);
 
@@ -43,8 +44,25 @@ public:
 
 		return object_manager->CreateEntity(scene_name, std::forward<Components>(comps)...);
 	}
-
 	void DeleteEntity(SceneData* scene, Entity e);
+
+	FragmentShaderData CreateFragmentShader(const char* hlsl_path);
+	VertexShaderData CreateVertexShader(const char* hlsl_path, std::initializer_list<VertexBufferBinding> vertex_buffer_layout);
+	ShaderProgramDescription* CreateShaderProgramDescription(const std::string& name);
+	ShaderProgram* CreateShaderProgram(const std::string& name, ShaderProgramDescription* spd, const RenderPassName& associated_pass_name,
+		VertexShaderData vs, std::initializer_list<BufferDataName> vertex_shader_buffers,
+		FragmentShaderData fs, std::initializer_list<BufferDataName> fragment_shader_buffers,
+		std::initializer_list<TextureSlotRole> texture_slots);
+
+	ComputeShaderData CreateComputeShader(const char* hlsl_path);
+	ComputeShaderProgram* CreateComputeShaderProgram(const std::string& name,
+		ComputeShaderData cs,
+		std::initializer_list<BufferDataName> rw_storage_buffers,
+		std::initializer_list<BufferDataName> ro_storage_buffers,
+		std::initializer_list<ComputeShaderProgram::ComputeRWTextureBindingParametr> rw_storage_textures,
+		std::initializer_list<AtlasName> ro_storage_textures,
+		std::initializer_list<AtlasName> texture_samplers,
+		const ComputePassName& associated_compute_pass);
 
 	BufferManager* GetBufferManager() const { return buffer_manager; }
 	TextureManager* GetTextureManager() const { return texture_manager; }

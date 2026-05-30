@@ -56,4 +56,6 @@ private:
 	std::vector<ComputePassStep*> ordered_compute_prepass_steps;
 
 	uint8_t render_frame = 0;
+
+	bool passes_filled = false;
 };

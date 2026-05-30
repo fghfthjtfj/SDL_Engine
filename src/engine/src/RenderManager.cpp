@@ -14,7 +14,11 @@ RenderPassStep* PassManager::CreateRenderPass(const ComputePassName& name, std::
 		SDL_Log("PassManager::CreateRenderPass: Invalid RenderPassStep order index.");
 		return nullptr;
 	}
-
+	auto it_pass = render_steps.find(name);
+	if (it_pass != render_steps.end()) {
+		SDL_Log("PassManager::CreateRenderPass: Render pass with name '%s' already exists.", name.c_str());
+		return it_pass->second.get();
+	}
 	auto data = std::make_unique<RenderPassStep>();
 	data->renderPassTexsData = std::move(rptd);
 	data->render_function = render_function;
@@ -32,6 +36,16 @@ ComputePassStep* PassManager::CreateComputePass(const ComputePassName& name, std
 		SDL_Log("PassManager::CreateComputePass: Invalid ComputePassStep order index.");
 		return nullptr;
 	}
+	auto it_pass = compute_steps.find(name);
+	if (it_pass != compute_steps.end()) {
+		SDL_Log("PassManager::CreateComputePass: Compute pass with name '%s' already exists.", name.c_str());
+		return it_pass->second.get();
+	}
+	auto it_prepass = compute_prepass_steps.find(name);
+	if (it_prepass != compute_prepass_steps.end()) {
+		SDL_Log("PassManager::CreateComputePass: A compute prepass with name '%s' already exists. Cannot create a pass with the same name.", name.c_str());
+		return nullptr;
+	}
 	auto data = std::make_unique<ComputePassStep>();
 	data->compute_function = compute_function;
 	data->pass_index = pass_index;
@@ -44,7 +58,17 @@ ComputePassStep* PassManager::CreateComputePass(const ComputePassName& name, std
 ComputePassStep* PassManager::CreateComputePrepass(const ComputePrepassName& name, std::function<void(SDL_GPUCommandBuffer*, PassManager*, ComputePassStep&, uint8_t)> compute_function, int pass_index)
 {
 	if (pass_index == -1) {
-		SDL_Log("PassManager::CreateComputePass: Invalid ComputePassStep order index.");
+		SDL_Log("PassManager::CreateComputePrepass: Invalid ComputePrepassStep order index.");
+		return nullptr;
+	}
+	auto it_prepass = compute_prepass_steps.find(name);
+	if (it_prepass != compute_prepass_steps.end()) {
+		SDL_Log("PassManager::CreateComputePrepass: Compute prepass with name '%s' already exists.", name.c_str());
+		return it_prepass->second.get();
+	}
+	auto it_pass = compute_steps.find(name);
+	if (it_pass != compute_steps.end()) {
+		SDL_Log("PassManager::CreateComputePrepass: A compute pass with name '%s' already exists. Cannot create a prepass with the same name.", name.c_str());
 		return nullptr;
 	}
 	auto data = std::make_unique<ComputePassStep>();
@@ -58,6 +82,10 @@ ComputePassStep* PassManager::CreateComputePrepass(const ComputePrepassName& nam
 
 void PassManager::FillRenderPasses()
 {
+	if (passes_filled) {
+		SDL_Log("PassManager::FillRenderPasses: Passes are already filled.");
+		return;
+	}
 	ordered_passes.clear();
 	ordered_passes.reserve(render_steps.size());
 	for (auto& [_, rp] : render_steps)
@@ -87,6 +115,7 @@ void PassManager::FillRenderPasses()
 		[](const ComputePassStep* a, const ComputePassStep* b) {
 		return a->pass_index < b->pass_index;
 	});
+	passes_filled = true;
 }
 
 void PassManager::ExecutePassesSteps(SDL_GPUCommandBuffer* cb, uint8_t pass_frame)
@@ -125,11 +154,6 @@ void PassManager::RenderPassStandardBody(SDL_GPUCommandBuffer* cb, RenderPassSte
 	ExecuteRenderBatches(cb, rp, *render_pass_step, bm, additional_offset, push_data_raw);
 	SDL_EndGPURenderPass(rp);
 	
-}
-
-void PassManager::WaitComputePrepass(SDL_GPUDevice* dev)
-{
-	SDL_WaitForGPUIdle(dev);
 }
 
 void PassManager::ComputePassStandardBody(SDL_GPUCommandBuffer* cb, ComputePassStep* compute_step,
